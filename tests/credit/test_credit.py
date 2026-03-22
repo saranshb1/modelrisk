@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from modelrisk.credit.pd import LogisticPD, MertonPD
+from modelrisk.credit.pd import LogisticPD, RandomForestPD, XGBoostPD, MertonPD
 from modelrisk.credit.lgd import BetaLGD, LinearLGD
 from modelrisk.credit.scorecard import Scorecard
 
@@ -92,6 +92,147 @@ class TestLGD:
         assert preds.shape == (len(X),)
         assert np.all((preds >= 0) & (preds <= 1))
         assert model.phi_ is not None and model.phi_ > 0
+
+
+class TestRandomForestPD:
+    def test_fit_predict(self, binary_classification_data):
+        X_train, X_test, y_train, _ = binary_classification_data
+        model = RandomForestPD(n_estimators=50, oob_score=True).fit(X_train, y_train)
+        proba = model.predict_proba(X_test)
+        assert proba.shape == (len(X_test),)
+        assert np.all((proba >= 0) & (proba <= 1))
+
+    def test_feature_importance_summary(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = RandomForestPD(n_estimators=50).fit(X_train, y_train)
+        fi = model.feature_importance_summary()
+        assert len(fi) == X_train.shape[1]
+        assert "importance" in fi.columns
+        assert "importance_pct" in fi.columns
+        assert abs(fi["importance_pct"].sum() - 100.0) < 1e-6
+
+    def test_oob_score(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = RandomForestPD(n_estimators=50, oob_score=True).fit(X_train, y_train)
+        assert 0 <= model.oob_score_ <= 1
+
+    def test_oob_score_disabled(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = RandomForestPD(n_estimators=50, oob_score=False).fit(X_train, y_train)
+        assert model.oob_score_ is None
+
+    def test_tree_depth_summary(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = RandomForestPD(n_estimators=50).fit(X_train, y_train)
+        depth = model.tree_depth_summary()
+        assert set(depth["statistic"]) == {"min", "mean", "median", "max", "std"}
+        assert int(depth.set_index("statistic").loc["min", "value"]) >= 1
+
+    def test_permutation_importance(self, binary_classification_data):
+        X_train, X_test, y_train, y_test = binary_classification_data
+        model = RandomForestPD(n_estimators=50).fit(X_train, y_train)
+        perm = model.permutation_importance(X_test, y_test, n_repeats=3)
+        assert len(perm) == X_test.shape[1]
+        assert "mean_importance" in perm.columns
+
+    def test_partial_dependence(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = RandomForestPD(n_estimators=50).fit(X_train, y_train)
+        pdp = model.partial_dependence(X_train, feature="f0", grid_resolution=20)
+        assert "feature_value" in pdp.columns
+        assert "mean_pd" in pdp.columns
+        assert len(pdp) == 20
+
+    def test_not_fitted_raises(self):
+        model = RandomForestPD()
+        with pytest.raises(RuntimeError):
+            model.predict_proba(np.zeros((5, 3)))
+
+    def test_shared_interface_consistent_with_logistic(self, binary_classification_data):
+        """RandomForestPD and LogisticPD feature_importance_summary have the same columns."""
+        X_train, X_test, y_train, _ = binary_classification_data
+        rf = RandomForestPD(n_estimators=50).fit(X_train, y_train)
+        lr = LogisticPD().fit(X_train, y_train)
+        assert set(rf.feature_importance_summary().columns) == set(lr.feature_importance_summary().columns)
+
+
+class TestXGBoostPD:
+    def test_fit_predict(self, binary_classification_data):
+        X_train, X_test, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        proba = model.predict_proba(X_test)
+        assert proba.shape == (len(X_test),)
+        assert np.all((proba >= 0) & (proba <= 1))
+
+    def test_feature_importance_summary_gain(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        fi = model.feature_importance_summary(importance_type="gain")
+        assert len(fi) == X_train.shape[1]
+        assert "importance_type" in fi.columns
+        assert (fi["importance_type"] == "gain").all()
+
+    @pytest.mark.parametrize("imp_type", ["gain", "weight", "cover", "total_gain", "total_cover"])
+    def test_feature_importance_all_types(self, binary_classification_data, imp_type):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        fi = model.feature_importance_summary(importance_type=imp_type)
+        assert len(fi) == X_train.shape[1]
+
+    def test_invalid_importance_type(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        with pytest.raises(ValueError):
+            model.feature_importance_summary(importance_type="invalid")
+
+    def test_scale_pos_weight_auto(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50, scale_pos_weight=None).fit(X_train, y_train)
+        assert model.scale_pos_weight_used_ is not None
+        assert model.scale_pos_weight_used_ > 0
+
+    def test_scale_pos_weight_manual(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50, scale_pos_weight=2.5).fit(X_train, y_train)
+        assert model.scale_pos_weight_used_ == pytest.approx(2.5)
+
+    def test_parameter_summary(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        params = model.parameter_summary()
+        assert "n_estimators" in params.index
+        assert "learning_rate" in params.index
+        assert "scale_pos_weight_used" in params.index
+
+    def test_learning_curve_with_eval_set(self, binary_classification_data):
+        X_train, X_test, y_train, y_test = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(
+            X_train, y_train, eval_set=[(X_test, y_test)]
+        )
+        lc = model.learning_curve_data()
+        assert "round" in lc.columns
+        assert "value" in lc.columns
+        assert len(lc) == 50
+
+    def test_learning_curve_without_eval_set_raises(self, binary_classification_data):
+        X_train, _, y_train, _ = binary_classification_data
+        model = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        with pytest.raises(RuntimeError):
+            model.learning_curve_data()
+
+    def test_not_fitted_raises(self):
+        model = XGBoostPD()
+        with pytest.raises(RuntimeError):
+            model.predict_proba(np.zeros((5, 3)))
+
+    def test_shared_interface_consistent_with_logistic(self, binary_classification_data):
+        """XGBoostPD feature_importance_summary has the same core columns as LogisticPD."""
+        X_train, _, y_train, _ = binary_classification_data
+        xgb = XGBoostPD(n_estimators=50).fit(X_train, y_train)
+        lr = LogisticPD().fit(X_train, y_train)
+        xgb_cols = set(xgb.feature_importance_summary().columns) - {"importance_type"}
+        lr_cols = set(lr.feature_importance_summary().columns)
+        assert xgb_cols == lr_cols
 
 
 class TestScorecard:
