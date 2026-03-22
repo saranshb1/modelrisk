@@ -1,0 +1,71 @@
+site_name: modelrisk
+site_description: Python library for credit, market, and operational risk modelling
+site_url: https://yourusername.github.io/modelRisk
+repo_url: https://github.com/yourusername/modelRisk
+repo_name: modelRisk
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - toc.integrate
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting_started.md
+  - API Reference:
+    - Credit Risk:
+      - PD Models: api/credit/pd.md
+      - LGD Models: api/credit/lgd.md
+      - Scorecard: api/credit/scorecard.md
+    - Market Risk:
+      - VaR Models: api/market/var.md
+      - CVaR / ES: api/market/cvar.md
+      - Volatility: api/market/volatility.md
+    - Operational Risk:
+      - LDA: api/operational/lda.md
+      - Scenarios & EVT: api/operational/scenarios.md
+    - Model Evaluation:
+      - Classification Metrics: api/evaluation/classification.md
+      - Regression Metrics: api/evaluation/regression.md
+      - Calibration: api/evaluation/calibration.md
+      - Explainability: api/evaluation/explainability.md
+    - Utilities:
+      - Distributions: api/utils/distributions.md
+      - Simulation: api/utils/simulation.md
+      - Plotting: api/utils/plotting.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
