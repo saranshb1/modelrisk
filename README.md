@@ -10,6 +10,14 @@
 
 ---
 
+## Architecture
+
+![modelRisk package architecture](docs/architecture.png)
+
+> Full package map — five subpackages (`credit`, `market`, `operational`, `evaluation`, `utils`), the IFRS 9 and IRB regulatory pipelines, the high-level `ScenarioManager`, and all cross-package dependencies.
+
+---
+
 ## Features
 
 ### Credit Risk
