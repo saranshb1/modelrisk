@@ -186,14 +186,70 @@ fig.savefig("shap_summary.png", dpi=150)
 
 ---
 
+### IFRS 9 — ScenarioManager (no-code entry point)
+
+```python
+from modelrisk.credit import ScenarioManager
+
+# Option A — Python API (method chaining)
+mgr = (
+    ScenarioManager(discount_rate=0.05)
+    .add_scenario("base",     weight=0.50, pd_scalar=1.0,  label="Central")
+    .add_scenario("downside", weight=0.30, pd_scalar=1.80, label="Adverse")
+    .add_scenario("upside",   weight=0.20, pd_scalar=0.70, label="Benign")
+    .attach_portfolio(pd=df.pit_pd, lgd=df.lgd, ead=df.ead,
+                      stage=df.stage, lifetime_pd=df.lifetime_pd)
+)
+
+# Option B — YAML config (no Python required for scenario changes)
+mgr = ScenarioManager.from_yaml("scenarios.yaml")
+mgr.attach_portfolio(pd=df.pit_pd, lgd=df.lgd, ead=df.ead, stage=df.stage)
+
+results = mgr.run_all()
+print(mgr.weighted_ecl())          # probability-weighted ECL
+print(mgr.scenario_ecl_table())    # per-scenario ECL + weighted contribution
+print(mgr.summary_report())        # audit-ready stage x scenario breakdown
+mgr.to_yaml("scenarios_q4.yaml")   # export config for version control
+```
+
+### IRB — Through-the-cycle calibration and capital
+
+```python
+from modelrisk.credit.irb import TTCCalibrator, IRBCapital, IRBValidator
+
+ttc = TTCCalibrator(min_pd=0.0003).fit(annual_default_rates)
+irb = IRBCapital(asset_class="retail_mortgage")
+rwa = irb.rwa_portfolio(pd_array=ttc_pds, lgd_array=lgds, ead_array=eads)
+val = IRBValidator()
+val.traffic_light_test(predicted_pd=0.008, observed_dr=0.015, n_obligors=500)
+```
+
+---
+
 ## Project Structure
 
 ```
 modelrisk/
 ├── credit/
-│   ├── pd.py           # LogisticPD, MertonPD
-│   ├── lgd.py          # BetaLGD, LinearLGD
-│   └── scorecard.py    # Scorecard (WoE, IV, points)
+│   ├── base_pd.py           # BasePDModel abstract class
+│   ├── pd.py                # LogisticPD, RandomForestPD, XGBoostPD, MertonPD
+│   ├── lgd.py               # BetaLGD, LinearLGD
+│   ├── scorecard.py         # Scorecard (WoE, IV, points)
+│   ├── scenario_manager.py  # ScenarioManager — IFRS 9 orchestration
+│   ├── ifrs9/
+│   │   ├── pit_pd.py        # PITCalibrator (scalar, isotonic, Platt, time weights)
+│   │   ├── staging.py       # StagingClassifier (dual SICR detection)
+│   │   ├── forward_pd.py    # ForwardPDCurve (hazard-rate term structure)
+│   │   ├── lifetime_pd.py   # LifetimePDCurve (discounted ECL per period)
+│   │   ├── macro_overlay.py # MacroOverlay (OLS sensitivity + logit scenarios)
+│   │   └── ecl.py           # ECLCalculator (portfolio ECL aggregation)
+│   └── irb/
+│       ├── ttc_pd.py        # TTCCalibrator (long-run average, Basel floor)
+│       ├── smoothing.py     # CycleAdjuster (scalar, moving avg, HP filter)
+│       ├── dr_mapping.py    # RatingMasterScale (log-spaced grade assignment)
+│       ├── pit_to_ttc.py    # PITtoTTCBridge (scalar and logit-offset)
+│       ├── capital.py       # IRBCapital (Basel ASRF RWA formula)
+│       └── validation.py    # IRBValidator (traffic light + binomial backtest)
 ├── market/
 │   ├── var.py          # HistoricalVaR, ParametricVaR, MonteCarloVaR
 │   ├── cvar.py         # CVaR / Expected Shortfall

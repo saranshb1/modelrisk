@@ -1,0 +1,59 @@
+# modelRisk IFRS 9 Scenario Configuration
+# ==========================================
+# Edit this file to define your macroeconomic scenarios.
+# Load with: ScenarioManager.from_yaml("scenarios.yaml")
+#
+# Rules:
+#   - weights must sum to 1.0
+#   - pd_scalar > 1.0 = worse conditions (higher default rates)
+#   - pd_scalar < 1.0 = better conditions (lower default rates)
+#   - pd_scalar = 1.0 = no adjustment from base model
+
+discount_rate: 0.05        # annual discount rate for ECL discounting
+period_type: monthly       # monthly or annual
+
+scenarios:
+
+  base:
+    weight: 0.50           # 50% probability
+    pd_scalar: 1.0         # no adjustment — model output used as-is
+    label: Central
+    description: >
+      Base case. GDP growth of ~1.5%, unemployment stable at ~5.5%.
+      Represents the most likely economic path over the next 12 months.
+
+  downside:
+    weight: 0.30           # 30% probability
+    pd_scalar: 1.80        # 80% higher default rates than base
+    label: Adverse
+    description: >
+      Adverse scenario. Mild recession with GDP contraction of ~1.5%,
+      unemployment rising to ~8%. Captures a 2015-style slowdown.
+    macro_paths:
+      gdp_growth: -1.5
+      unemployment: 8.0
+      house_price_index: -5.0
+
+  severe_downside:
+    weight: 0.10           # 10% probability
+    pd_scalar: 2.80        # 2.8x higher default rates than base
+    label: Severe adverse
+    description: >
+      Severe stress. Deep recession comparable to 2008-09.
+      GDP contraction ~4%, unemployment peaking at ~12%.
+    macro_paths:
+      gdp_growth: -4.0
+      unemployment: 12.0
+      house_price_index: -20.0
+
+  upside:
+    weight: 0.10           # 10% probability
+    pd_scalar: 0.65        # 35% lower default rates than base
+    label: Upside
+    description: >
+      Benign scenario. Strong recovery, GDP growth ~3.5%,
+      unemployment falling to ~4%. Represents a soft-landing outcome.
+    macro_paths:
+      gdp_growth: 3.5
+      unemployment: 4.0
+      house_price_index: 5.0
