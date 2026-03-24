@@ -165,17 +165,27 @@ class TestExplainer:
         shap_df = explainer.shap_values(X_test.head(10))
         assert shap_df.shape == (10, X_test.shape[1])
 
-    def test_lime_explain_shape(self, binary_classification_data, fitted_logistic_pd):
+    def test_local_explain_shape(self, binary_classification_data, fitted_logistic_pd):
         X_train, X_test, _, _ = binary_classification_data
         explainer = Explainer(
             fitted_logistic_pd,
             feature_names=X_test.columns.tolist(),
             background_data=X_train,
         )
-        result = explainer.lime_explain(X_test.iloc[0], X_train)
+        result = explainer.local_explain(X_test.iloc[0], X_train)
         assert "feature" in result.columns
         assert "importance" in result.columns
         assert len(result) == X_test.shape[1]
+
+    def test_local_explain_top_n(self, binary_classification_data, fitted_logistic_pd):
+        X_train, X_test, _, _ = binary_classification_data
+        explainer = Explainer(
+            fitted_logistic_pd,
+            feature_names=X_test.columns.tolist(),
+            background_data=X_train,
+        )
+        result = explainer.local_explain(X_test.iloc[0], X_train, top_n=5)
+        assert len(result) == 5
 
     def test_permutation_importance(self, binary_classification_data, fitted_logistic_pd):
         X_train, X_test, _, y_test = binary_classification_data
@@ -201,4 +211,4 @@ class TestExplainer:
     def test_shap_available_property(self, fitted_logistic_pd):
         explainer = Explainer(fitted_logistic_pd)
         assert isinstance(explainer.shap_available, bool)
-        assert isinstance(explainer.lime_available, bool)
+        assert explainer.lime_available is False  # lime removed; built-in always used

@@ -1,10 +1,23 @@
-"""Model explainability: SHAP and LIME with lightweight fallbacks.
+"""Model explainability: SHAP values, local linear explanations, and permutation importance.
 
-If the optional ``shap`` and ``lime`` packages are installed
-(``pip install modelrisk[explainability]``), this module wraps them
-directly. When they are not available, lightweight from-scratch
-implementations are used so the package remains functional without
-the optional dependencies.
+SHAP
+----
+Uses the ``shap`` library when available (``pip install modelrisk[explainability]``),
+falling back to a built-in kernel SHAP approximation when it is not installed.
+
+Local linear explanations (LIME-style)
+---------------------------------------
+Always uses the built-in ``_LocalExplainer`` implementation — a weighted ridge
+regression over perturbed neighbourhood samples.  The ``lime`` library has been
+removed as a dependency because its ``LimeTabularExplainer`` raises
+``NotImplementedError`` for models that return only positive-class probabilities
+(a standard pattern in scikit-learn and modelrisk).  The built-in implementation
+is equivalent in concept, dependency-free, and fully compatible with any model
+that exposes ``predict_proba`` or ``predict``.
+
+Permutation importance
+----------------------
+Model-agnostic; no external libraries required.
 """
 
 from __future__ import annotations
@@ -25,33 +38,26 @@ try:
 except ImportError:
     _SHAP_AVAILABLE = False
 
-try:
-    import lime.lime_tabular as _lime_tabular
-    _LIME_AVAILABLE = True
-except ImportError:
-    _LIME_AVAILABLE = False
-
 
 # ---------------------------------------------------------------------------
-# Lightweight fallback implementations
+# Built-in kernel SHAP approximation
 # ---------------------------------------------------------------------------
 
 class _KernelSHAPFallback:
-    """Minimal Kernel SHAP approximation (fallback when shap is not installed).
+    """Minimal kernel SHAP approximation (used when shap is not installed).
 
-    Uses a simplified sampling approach: for each feature, the marginal
-    contribution is estimated by toggling the feature on/off across a set
-    of background samples. This is not a full SHAP implementation but
-    provides directionally correct attributions for model validation.
+    For each feature, the marginal contribution is estimated by toggling the
+    feature between its observed value and background samples.  Attributions
+    are normalised so they sum to ``f(x) - E[f(x)]``.
 
     Parameters
     ----------
     predict_fn : callable
-        Function mapping (n_samples, n_features) → probabilities.
+        Function mapping (n_samples, n_features) → 1-D probability array.
     background : np.ndarray
         Background dataset used to marginalise features.
     n_samples : int
-        Number of coalition samples per feature.
+        Number of background samples drawn per instance.
     random_state : int or None
     """
 
@@ -68,16 +74,7 @@ class _KernelSHAPFallback:
         self.rng = np.random.default_rng(random_state)
 
     def shap_values(self, X: np.ndarray) -> np.ndarray:
-        """Compute approximate SHAP values for each instance in X.
-
-        Parameters
-        ----------
-        X : np.ndarray of shape (n_instances, n_features)
-
-        Returns
-        -------
-        np.ndarray of shape (n_instances, n_features)
-        """
+        """Return approximate SHAP values of shape (n_instances, n_features)."""
         X = np.atleast_2d(X)
         n_instances, n_features = X.shape
         shap_vals = np.zeros((n_instances, n_features))
@@ -88,18 +85,12 @@ class _KernelSHAPFallback:
         for i, x in enumerate(X):
             baseline_pred = float(np.mean(self.predict_fn(bg_samples)))
             for j in range(n_features):
-                # With feature j from x
                 with_j = bg_samples.copy()
                 with_j[:, j] = x[j]
-                pred_with = float(np.mean(self.predict_fn(with_j)))
-
-                # Without feature j (marginalised)
-                without_j = bg_samples.copy()
-                pred_without = float(np.mean(self.predict_fn(without_j)))
-
-                shap_vals[i, j] = pred_with - pred_without
-
-            # Normalise so shap values sum to f(x) - E[f(x)]
+                shap_vals[i, j] = float(np.mean(self.predict_fn(with_j))) - float(
+                    np.mean(self.predict_fn(bg_samples))
+                )
+            # Normalise to f(x) - E[f(x)]
             instance_pred = float(self.predict_fn(x.reshape(1, -1))[0])
             total = shap_vals[i].sum()
             if abs(total) > 1e-9:
@@ -108,20 +99,31 @@ class _KernelSHAPFallback:
         return shap_vals
 
 
-class _LIMEFallback:
-    """Minimal LIME-style local linear approximation (fallback).
+# ---------------------------------------------------------------------------
+# Built-in local linear explainer (LIME-style)
+# ---------------------------------------------------------------------------
 
-    Perturbs features around a query instance, weights samples by proximity,
-    and fits a weighted ridge regression to approximate local feature
-    importance.
+class _LocalExplainer:
+    """Local linear approximation for single-instance explanations.
+
+    Perturbs features around a query instance, weights the perturbed samples
+    by their proximity to the query (exponential kernel), and fits a weighted
+    ridge regression to approximate local feature importance.
+
+    This is conceptually equivalent to LIME's tabular explainer but is
+    implemented from scratch to avoid the ``lime`` library's restriction
+    that predict functions must return full class-probability matrices.
 
     Parameters
     ----------
     predict_fn : callable
-    feature_names : list of str
+        Function mapping (n_samples, n_features) → 1-D probability array.
+        This is the standard modelrisk convention — no 2-D output required.
+    feature_names : list of str or None
     n_samples : int
+        Number of perturbed neighbourhood samples.
     kernel_width : float
-        Controls locality — smaller values = tighter neighbourhood.
+        Controls locality.  Smaller = tighter neighbourhood around the query.
     random_state : int or None
     """
 
@@ -140,14 +142,18 @@ class _LIMEFallback:
         self.rng = np.random.default_rng(random_state)
 
     def explain_instance(
-        self, x: np.ndarray, training_data: np.ndarray
+        self,
+        x: np.ndarray,
+        training_data: np.ndarray,
     ) -> dict[str, float]:
-        """Explain a single instance with local linear attribution.
+        """Explain a single instance.
 
         Parameters
         ----------
         x : np.ndarray of shape (n_features,)
-        training_data : np.ndarray — used to estimate feature std for perturbation.
+            The instance to explain.
+        training_data : np.ndarray of shape (n_train, n_features)
+            Used to estimate per-feature standard deviations for perturbation.
 
         Returns
         -------
@@ -162,18 +168,18 @@ class _LIMEFallback:
         stds = np.std(training_data, axis=0, ddof=1)
         stds = np.where(stds < 1e-9, 1.0, stds)
 
-        # Generate perturbed samples
+        # Generate perturbed neighbourhood
         noise = self.rng.normal(0, 1, size=(self.n_samples, n_features))
         perturbed = x + noise * stds
 
-        # Kernel weights (exponential based on normalised distance)
-        dists = np.sqrt(np.sum(noise**2, axis=1))
-        weights = np.exp(-(dists**2) / (2 * self.kernel_width**2 * n_features))
+        # Exponential kernel weights based on normalised distance
+        dists = np.sqrt(np.sum(noise ** 2, axis=1))
+        weights = np.exp(-(dists ** 2) / (2 * self.kernel_width ** 2 * n_features))
 
-        # Predict on perturbed samples
+        # Predict on perturbed samples — returns 1-D array, no issues
         preds = self.predict_fn(perturbed)
 
-        # Fit weighted ridge regression
+        # Fit weighted ridge regression in standardised feature space
         scaler = StandardScaler()
         perturbed_scaled = scaler.fit_transform(perturbed)
         ridge = Ridge(alpha=1.0)
@@ -188,29 +194,39 @@ class _LIMEFallback:
 # ---------------------------------------------------------------------------
 
 class Explainer:
-    """Unified model explainability interface supporting SHAP and LIME.
-
-    Automatically uses installed ``shap`` / ``lime`` libraries when available,
-    falling back to lightweight built-in implementations otherwise.
+    """Unified model explainability: SHAP, local linear explanations, and permutation importance.
 
     Parameters
     ----------
     model : fitted model object
-        Must expose a ``predict_proba`` method returning shape (n, 2),
-        or a ``predict`` method returning shape (n,).
+        Must expose ``predict_proba`` (returning shape ``(n, 2)``) or
+        ``predict`` (returning shape ``(n,)``).
     feature_names : list of str, optional
-        Column names for display in outputs.
+        Column names used in all output DataFrames.
     background_data : array-like, optional
-        Background dataset for SHAP baseline (recommended: a sample of the
-        training set, typically 50–200 rows).
+        Background dataset for SHAP baseline computation.
+        Recommended: 50–200 rows sampled from the training set.
     random_state : int or None
+
+    Notes
+    -----
+    **SHAP** — uses the ``shap`` library (TreeExplainer or KernelExplainer)
+    when installed; falls back to the built-in ``_KernelSHAPFallback``
+    otherwise.  Install with ``pip install modelrisk[explainability]``.
+
+    **Local linear explanations** — always uses the built-in
+    ``_LocalExplainer``.  The ``lime`` library has been removed because its
+    tabular explainer requires models to return full class-probability matrices
+    (shape ``(n, n_classes)``), which is incompatible with the standard
+    modelrisk pattern of returning 1-D positive-class probabilities.
 
     Examples
     --------
-    >>> explainer = Explainer(model, feature_names=X.columns.tolist(), background_data=X_train)
-    >>> shap_df = explainer.shap_values(X_test)
-    >>> lime_df = explainer.lime_explain(X_test.iloc[0], X_train)
-    >>> explainer.feature_importance_summary(X_test)
+    >>> exp = Explainer(model, feature_names=X.columns.tolist(), background_data=X_train)
+    >>> shap_df = exp.shap_values(X_test)
+    >>> local_df = exp.local_explain(X_test.iloc[0], X_train, top_n=10)
+    >>> perm_df = exp.permutation_importance(X_test, y_test)
+    >>> summary = exp.feature_importance_summary(X_test, y_test)
     """
 
     def __init__(
@@ -225,31 +241,30 @@ class Explainer:
         self.random_state = random_state
 
         if background_data is not None:
-            if isinstance(background_data, pd.DataFrame):
-                self._background = background_data.values.astype(float)
-            else:
-                self._background = np.asarray(background_data, dtype=float)
+            self._background = (
+                background_data.values.astype(float)
+                if isinstance(background_data, pd.DataFrame)
+                else np.asarray(background_data, dtype=float)
+            )
         else:
             self._background = None
 
         self._predict_fn = self._build_predict_fn()
 
     def _build_predict_fn(self) -> Callable:
-        """Return a unified predict function → 1D probability array."""
+        """Return a unified 1-D predict function."""
         if hasattr(self.model, "predict_proba"):
             def _proba(X: np.ndarray) -> np.ndarray:
                 out = self.model.predict_proba(np.asarray(X))
-                # handle both (n, 2) sklearn-style and (n,) custom models
-                if out.ndim == 2:
-                    return out[:, 1]
-                return out
+                return out[:, 1] if out.ndim == 2 else out
             return _proba
         elif hasattr(self.model, "predict"):
-            return lambda X: np.asarray(self.model.predict(np.asarray(X)), dtype=float)
-        else:
-            raise AttributeError(
-                "Model must have a predict_proba or predict method."
+            return lambda X: np.asarray(
+                self.model.predict(np.asarray(X)), dtype=float
             )
+        raise AttributeError(
+            "Model must expose predict_proba or predict."
+        )
 
     # ------------------------------------------------------------------
     # SHAP
@@ -262,16 +277,15 @@ class Explainer:
     ) -> pd.DataFrame:
         """Compute SHAP values for all instances in X.
 
-        Uses the ``shap`` library (TreeExplainer for tree models,
-        KernelExplainer otherwise) when available; falls back to the
-        built-in approximate kernel SHAP.
+        Uses the ``shap`` library (TreeExplainer → KernelExplainer) when
+        installed; falls back to the built-in kernel SHAP approximation.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
         n_background_samples : int
-            Rows of background to summarise with shap.kmeans when using
-            the shap library.
+            Rows of background to summarise with ``shap.kmeans`` when using
+            the ``shap`` library's KernelExplainer.
 
         Returns
         -------
@@ -283,14 +297,14 @@ class Explainer:
 
         if _SHAP_AVAILABLE:
             return self._shap_library(X_arr, background, names, n_background_samples)
-        else:
-            warnings.warn(
-                "shap not installed. Using built-in fallback. "
-                "Install with: pip install modelrisk[explainability]",
-                ImportWarning,
-                stacklevel=2,
-            )
-            return self._shap_fallback(X_arr, background, names)
+
+        warnings.warn(
+            "shap not installed — using built-in kernel SHAP approximation. "
+            "For full SHAP support: pip install modelrisk[explainability]",
+            ImportWarning,
+            stacklevel=2,
+        )
+        return self._shap_fallback(X_arr, background, names)
 
     def _shap_library(
         self,
@@ -299,7 +313,6 @@ class Explainer:
         names: list[str],
         n_background_samples: int,
     ) -> pd.DataFrame:
-        """SHAP via the shap library — TreeExplainer or KernelExplainer."""
         try:
             explainer = _shap.TreeExplainer(self.model)
             vals = explainer.shap_values(X_arr)
@@ -317,96 +330,71 @@ class Explainer:
         fallback = _KernelSHAPFallback(
             self._predict_fn, background, random_state=self.random_state
         )
-        vals = fallback.shap_values(X_arr)
-        return pd.DataFrame(vals, columns=names)
+        return pd.DataFrame(fallback.shap_values(X_arr), columns=names)
 
     # ------------------------------------------------------------------
-    # LIME
+    # Local linear explanations (replaces LIME)
     # ------------------------------------------------------------------
 
-    def lime_explain(
+    def local_explain(
         self,
         instance: pd.Series | np.ndarray,
         training_data: pd.DataFrame | np.ndarray,
         n_samples: int = 500,
+        kernel_width: float = 0.75,
         top_n: int | None = None,
     ) -> pd.DataFrame:
-        """LIME explanation for a single instance.
+        """Local linear explanation for a single instance.
 
-        Uses the ``lime`` library when available; falls back to the
-        built-in local linear approximation.
+        Fits a weighted ridge regression on a perturbed neighbourhood around
+        the instance to approximate which features drove that specific
+        prediction.  Conceptually equivalent to LIME but implemented from
+        scratch — no external dependency, no class-probability restriction.
 
         Parameters
         ----------
         instance : array-like of shape (n_features,)
             The observation to explain.
         training_data : array-like of shape (n_train, n_features)
-            Training data for feature statistics.
+            Used to estimate per-feature standard deviations for perturbation.
         n_samples : int
-            Number of perturbed samples to generate.
+            Number of perturbed neighbourhood samples.
+        kernel_width : float
+            Exponential kernel width controlling locality.
         top_n : int or None
-            Return only the top_n most important features by magnitude.
+            If set, return only the top_n features by absolute importance.
 
         Returns
         -------
-        pd.DataFrame with columns: feature, importance, abs_importance.
+        pd.DataFrame — columns: feature, importance, abs_importance.
             Sorted by absolute importance descending.
         """
-        x_arr = instance.values if isinstance(instance, pd.Series) else np.asarray(instance, dtype=float)
+        x_arr = (
+            instance.values if isinstance(instance, pd.Series)
+            else np.asarray(instance, dtype=float)
+        )
         train_arr = (
             training_data.values if isinstance(training_data, pd.DataFrame)
             else np.asarray(training_data, dtype=float)
         )
         names = self.feature_names or [f"feature_{i}" for i in range(len(x_arr))]
 
-        if _LIME_AVAILABLE:
-            importance = self._lime_library(x_arr, train_arr, names, n_samples)
-        else:
-            warnings.warn(
-                "lime not installed. Using built-in fallback. "
-                "Install with: pip install modelrisk[explainability]",
-                ImportWarning,
-                stacklevel=2,
-            )
-            fallback = _LIMEFallback(
-                self._predict_fn,
-                feature_names=names,
-                n_samples=n_samples,
-                random_state=self.random_state,
-            )
-            importance = fallback.explain_instance(x_arr, train_arr)
-
-        df = pd.DataFrame(
-            list(importance.items()), columns=["feature", "importance"]
-        )
-        df["abs_importance"] = df["importance"].abs()
-        df = df.sort_values("abs_importance", ascending=False).reset_index(drop=True)
-
-        if top_n is not None:
-            df = df.head(top_n)
-        return df
-
-    def _lime_library(
-        self,
-        x_arr: np.ndarray,
-        train_arr: np.ndarray,
-        names: list[str],
-        n_samples: int,
-    ) -> dict[str, float]:
-        """LIME explanation via the lime library."""
-        lime_explainer = _lime_tabular.LimeTabularExplainer(
-            training_data=train_arr,
+        local_exp = _LocalExplainer(
+            predict_fn=self._predict_fn,
             feature_names=names,
-            mode="classification",
-            random_state=self.random_state or 42,
+            n_samples=n_samples,
+            kernel_width=kernel_width,
+            random_state=self.random_state,
         )
-        exp = lime_explainer.explain_instance(
-            x_arr,
-            self._predict_fn,
-            num_features=len(names),
-            num_samples=n_samples,
+        importance = local_exp.explain_instance(x_arr, train_arr)
+
+        df = (
+            pd.DataFrame(list(importance.items()), columns=["feature", "importance"])
+            .assign(abs_importance=lambda d: d["importance"].abs())
+            .sort_values("abs_importance", ascending=False)
+            .reset_index(drop=True)
         )
-        return dict(exp.as_list())
+        return df.head(top_n) if top_n is not None else df
 
     # ------------------------------------------------------------------
     # Permutation feature importance
@@ -421,57 +409,55 @@ class Explainer:
     ) -> pd.DataFrame:
         """Model-agnostic permutation feature importance.
 
-        Measures the drop in model performance when each feature's values
-        are randomly shuffled, breaking its relationship with the target.
-        No external libraries required.
+        Measures the drop in model performance when each feature is randomly
+        shuffled.  No external libraries required.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,)
         n_repeats : int
-            Number of permutations per feature.
+            Number of shuffle repetitions per feature.
         metric : str
-            Scoring metric: 'auc', 'accuracy', or 'mse'.
+            ``'auc'``, ``'accuracy'``, or ``'mse'``.
 
         Returns
         -------
-        pd.DataFrame with columns: feature, mean_importance, std_importance.
+        pd.DataFrame — columns: feature, mean_importance, std_importance.
             Sorted by mean_importance descending.
         """
-        from sklearn.metrics import roc_auc_score, accuracy_score, mean_squared_error
+        from sklearn.metrics import accuracy_score, mean_squared_error, roc_auc_score
 
         X_arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X, dtype=float)
         y_arr = np.asarray(y)
         names = self.feature_names or [f"feature_{i}" for i in range(X_arr.shape[1])]
         rng = np.random.default_rng(self.random_state)
 
+        VALID_METRICS = ("auc", "accuracy", "mse")
+        if metric not in VALID_METRICS:
+            raise ValueError(f"metric must be one of {VALID_METRICS}, got '{metric}'.")
+
         def _score(X_in: np.ndarray) -> float:
             preds = self._predict_fn(X_in)
             if metric == "auc":
                 return float(roc_auc_score(y_arr, preds))
-            elif metric == "accuracy":
+            if metric == "accuracy":
                 return float(accuracy_score(y_arr, (preds >= 0.5).astype(int)))
-            elif metric == "mse":
-                return -float(mean_squared_error(y_arr, preds))
-            raise ValueError(f"Unknown metric '{metric}'. Choose: auc, accuracy, mse.")
+            return -float(mean_squared_error(y_arr, preds))
 
         baseline = _score(X_arr)
         results = []
-
         for j, name in enumerate(names):
             drops = []
             for _ in range(n_repeats):
                 X_perm = X_arr.copy()
                 X_perm[:, j] = rng.permutation(X_perm[:, j])
                 drops.append(baseline - _score(X_perm))
-            results.append(
-                {
-                    "feature": name,
-                    "mean_importance": float(np.mean(drops)),
-                    "std_importance": float(np.std(drops, ddof=1)),
-                }
-            )
+            results.append({
+                "feature": name,
+                "mean_importance": float(np.mean(drops)),
+                "std_importance": float(np.std(drops, ddof=1)),
+            })
 
         return (
             pd.DataFrame(results)
@@ -480,7 +466,7 @@ class Explainer:
         )
 
     # ------------------------------------------------------------------
-    # Summary
+    # Combined summary
     # ------------------------------------------------------------------
 
     def feature_importance_summary(
@@ -488,24 +474,27 @@ class Explainer:
         X: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray | None = None,
     ) -> pd.DataFrame:
-        """Combined feature importance: mean |SHAP| and permutation importance.
+        """Combined feature importance: mean |SHAP| + optional permutation importance.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
         y : array-like, optional
-            If provided, permutation importance is also computed.
+            If provided, permutation importance is computed and merged in.
 
         Returns
         -------
         pd.DataFrame sorted by mean |SHAP| descending.
         """
         shap_df = self.shap_values(X)
-        mean_shap = shap_df.abs().mean().rename("mean_abs_shap")
-
-        summary = mean_shap.reset_index()
-        summary.columns = ["feature", "mean_abs_shap"]
-        summary = summary.sort_values("mean_abs_shap", ascending=False).reset_index(drop=True)
+        summary = (
+            shap_df.abs().mean()
+            .rename("mean_abs_shap")
+            .reset_index()
+            .rename(columns={"index": "feature"})
+            .sort_values("mean_abs_shap", ascending=False)
+            .reset_index(drop=True)
+        )
 
         if y is not None:
             perm = self.permutation_importance(X, y)
@@ -519,12 +508,20 @@ class Explainer:
 
         return summary
 
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
     @property
     def shap_available(self) -> bool:
-        """Whether the shap library is installed."""
+        """Whether the ``shap`` library is installed."""
         return _SHAP_AVAILABLE
 
     @property
     def lime_available(self) -> bool:
-        """Whether the lime library is installed."""
-        return _LIME_AVAILABLE
+        """Always ``False`` — the ``lime`` library has been removed.
+
+        Local explanations are now provided by the built-in
+        ``_LocalExplainer`` via ``local_explain()``.
+        """
+        return False
