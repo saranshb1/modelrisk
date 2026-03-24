@@ -49,10 +49,10 @@ dev = [
 all = ["modelrisk[explainability,dev]"]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/modelRisk"
-Repository = "https://github.com/yourusername/modelRisk"
-Issues = "https://github.com/yourusername/modelRisk/issues"
-Documentation = "https://yourusername.github.io/modelRisk"
+Homepage = "https://github.com/saranshb1/modelRisk"
+Repository = "https://github.com/saranshb1/modelRisk"
+Issues = "https://github.com/saranshb1/modelRisk/issues"
+Documentation = "https://saranshb1.github.io/modelRisk"
 
 [tool.hatch.build.targets.wheel]
 packages = ["modelrisk"]
