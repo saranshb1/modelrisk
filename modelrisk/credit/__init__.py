@@ -7,7 +7,6 @@ from modelrisk.credit.pd import LogisticPD, MertonPD, RandomForestPD, XGBoostPD
 from modelrisk.credit.scenario_manager import Scenario, ScenarioManager
 from modelrisk.credit.scorecard import Scorecard
 
-
 __all__ = [
     "BasePDModel",
     "LogisticPD", "RandomForestPD", "XGBoostPD", "MertonPD",

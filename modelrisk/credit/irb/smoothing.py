@@ -366,8 +366,8 @@ class IRBCapital:
             if maturity_array is not None
             else np.full(len(pds), 2.5)
         )
-        rows = [self.compute_rwa(pd, lgd, ead, mat) 
-                for pd, lgd, ead, mat in zip(pds, lgds, eads, mats)]
+        rows = [self.compute_rwa(pd, lgd, ead, mat)
+                    for pd, lgd, ead, mat in zip(pds, lgds, eads, mats)]
         df = pd.DataFrame(rows)
         total = pd.DataFrame([{
             "pd": np.nan, "lgd": np.nan,

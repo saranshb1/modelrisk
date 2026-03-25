@@ -59,10 +59,10 @@ import pandas as pd
 
 from modelrisk.credit.ifrs9.ecl import ECLCalculator
 
-
 # ---------------------------------------------------------------------------
 # Scenario dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Scenario:
