@@ -17,6 +17,7 @@ from modelrisk.credit.irb.smoothing import CycleAdjuster
 from modelrisk.credit.irb.ttc_pd import TTCCalibrator
 from modelrisk.credit.irb.validation import IRBValidator
 
+
 __all__ = [
     "TTCCalibrator",
     "CycleAdjuster",

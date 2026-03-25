@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+
 class TTCCalibrator:
     """Calibrate PD estimates to through-the-cycle long-run averages.
 
