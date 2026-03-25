@@ -218,8 +218,20 @@ class CalibrationMetrics:
         rows = [
             ("HL statistic", hl["statistic"], f"Chi-squared, df={hl['df']}"),
             ("HL p-value", hl["p_value"], hl["interpretation"]),
-            ("Mean calibration error", self.mean_calibration_error(), "Avg |predicted - observed| per bin"),
-            ("Expected calibration error", self.expected_calibration_error(), "Weighted avg |predicted - observed|"),
-            ("Portfolio rate ratio", self.overall_default_rate_ratio(), "Mean predicted PD / observed rate; 1.0 = perfect"),
+            (
+                "Mean calibration error",
+                self.mean_calibration_error(),
+                "Avg |predicted - observed| per bin",
+            ),
+            (
+                "Expected calibration error",
+                self.expected_calibration_error(),
+                "Weighted avg |predicted - observed|",
+            ),
+            (
+                "Portfolio rate ratio",
+                self.overall_default_rate_ratio(),
+                "Mean predicted PD / observed rate; 1.0 = perfect",
+            ),
         ]
         return pd.DataFrame(rows, columns=["metric", "value", "interpretation"])
