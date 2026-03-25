@@ -1,10 +1,10 @@
 # modelrisk
 
-[![CI](https://github.com/yourusername/modelRisk/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/modelRisk/actions/workflows/ci.yml)
+[![CI](https://github.com/saranshb1/modelRisk/actions/workflows/ci.yml/badge.svg)](https://github.com/saranshb1/modelRisk/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/modelrisk.svg)](https://badge.fury.io/py/modelrisk)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![codecov](https://codecov.io/gh/yourusername/modelRisk/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/modelRisk)
+[![codecov](https://codecov.io/gh/saranshb1/modelRisk/branch/main/graph/badge.svg)](https://codecov.io/gh/saranshb1/modelRisk)
 
 **modelrisk** is a Python library for credit, market, and operational risk modelling with a built-in model evaluation and explainability suite.
 
