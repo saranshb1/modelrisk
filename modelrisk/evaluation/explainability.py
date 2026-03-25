@@ -254,13 +254,13 @@ class Explainer:
     def _build_predict_fn(self) -> Callable:
         """Return a unified 1-D predict function."""
         if hasattr(self.model, "predict_proba"):
-            def _proba(X: np.ndarray) -> np.ndarray:
-                out = self.model.predict_proba(np.asarray(X))
+            def _proba(x_ex: np.ndarray) -> np.ndarray:
+                out = self.model.predict_proba(np.asarray(x_ex))
                 return out[:, 1] if out.ndim == 2 else out
             return _proba
         elif hasattr(self.model, "predict"):
-            return lambda X: np.asarray(
-                self.model.predict(np.asarray(X)), dtype=float
+            return lambda x_ex: np.asarray(
+                self.model.predict(np.asarray(x_ex)), dtype=float
             )
         raise AttributeError(
             "Model must expose predict_proba or predict."

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy import stats
+# from scipy import stats --- IGNORE ---
 
 
 class MacroOverlay:

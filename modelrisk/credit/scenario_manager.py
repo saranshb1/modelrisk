@@ -21,18 +21,18 @@ YAML format example::
 
     discount_rate: 0.05
     scenarios:
-      base:
-        weight: 0.50
-        pd_scalar: 1.0
-        label: Central
-      downside:
-        weight: 0.30
-        pd_scalar: 1.8
-        label: Adverse
-      upside:
-        weight: 0.20
-        pd_scalar: 0.7
-        label: Benign
+        base:
+            weight: 0.50
+            pd_scalar: 1.0
+            label: Central
+        downside:
+            weight: 0.30
+            pd_scalar: 1.8
+            label: Adverse
+        upside:
+            weight: 0.20
+            pd_scalar: 0.7
+            label: Benign
 
 Examples
 --------
@@ -50,7 +50,7 @@ Examples
 
 from __future__ import annotations
 
-import warnings
+# import warnings --- IGNORE ---
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any

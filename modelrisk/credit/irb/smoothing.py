@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy import optimize, stats
-
+from scipy import stats
+# from scipy import optimize --- IGNORE ---
 
 class CycleAdjuster:
     """Smooth PIT default rates to TTC using cycle-adjustment methods.
@@ -202,15 +202,19 @@ class PITtoTTCBridge:
         -------
         self
         """
+
         pit = np.asarray(pit_pds, dtype=float)
         ttc = np.asarray(ttc_pds, dtype=float)
 
         if self.method == "scalar":
             self._scalar = float(np.mean(ttc) / max(np.mean(pit), 1e-9))
         else:
-            logit = lambda p: np.log(np.clip(p, 1e-9, 1 - 1e-9) /
-                                        (1 - np.clip(p, 1e-9, 1 - 1e-9)))
-            self._logit_offset = float(np.mean(logit(ttc) - logit(pit)))
+            def logit(p: np.ndarray) -> np.ndarray:
+                p = np.clip(p, 1e-9, 1 - 1e-9)
+                return np.log(p / (1 - p))
+
+        self._logit_offset = float(np.mean(logit(ttc) - logit(pit)))
+
         return self
 
     def convert(self, pit_pds: pd.Series | np.ndarray) -> np.ndarray:
@@ -362,7 +366,7 @@ class IRBCapital:
             if maturity_array is not None
             else np.full(len(pds), 2.5)
         )
-        rows = [self.compute_rwa(p, l, e, m) for p, l, e, m in zip(pds, lgds, eads, mats)]
+        rows = [self.compute_rwa(pd, lgd, ead, mat) for pd, lgd, ead, mat in zip(pds, lgds, eads, mats)]
         df = pd.DataFrame(rows)
         total = pd.DataFrame([{
             "pd": np.nan, "lgd": np.nan,

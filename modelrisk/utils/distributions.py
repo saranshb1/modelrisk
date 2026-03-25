@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-#Third-party imports
+# Third-party imports
 import numpy as np
 import pandas as pd
 from scipy import stats
-
 
 SUPPORTED_DISTRIBUTIONS = {
     "normal": stats.norm,

@@ -317,7 +317,7 @@ class RandomForestPD(_TreeMixin):
 
     def permutation_importance(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_pd: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
         n_repeats: int = 10,
         random_state: int | None = None,
@@ -343,7 +343,7 @@ class RandomForestPD(_TreeMixin):
         if not hasattr(self._model, "estimators_"):
             raise RuntimeError("Model has not been fitted yet.")
         result = _perm(
-            self._model, self._to_array(X), np.asarray(y),
+            self._model, self._to_array(x_pd), np.asarray(y),
             n_repeats=n_repeats,
             random_state=random_state or self.random_state,
             scoring="roc_auc",
@@ -392,7 +392,8 @@ class RandomForestPD(_TreeMixin):
             feat_idx = int(feature)
         result = _pdp(self._model, self._to_array(x_pd), features=[feat_idx],
                         grid_resolution=grid_resolution)
-        feat_name = self.feature_names_[feat_idx] if self.feature_names_ else f"x{feat_idx}"
+        # Remove feat_name from output for consistency with LogisticPD and XGBoostPD summaries.
+        # feat_name = self.feature_names_[feat_idx] if self.feature_names_ else f"x{feat_idx}"
         return pd.DataFrame({
             "feature_value": result["grid_values"][0],
             "mean_pd": result["average"][0],
@@ -697,10 +698,10 @@ class MertonPD:
         self.max_iter = max_iter
 
     def _black_scholes_call(self, asset_value: float, debt: float, sigma: float):
-        r, T = self.risk_free_rate, self.time_horizon
-        d1 = (np.log(asset_value / debt) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-        d2 = d1 - sigma * np.sqrt(T)
-        call = asset_value * stats.norm.cdf(d1) - debt * np.exp(-r * T) * stats.norm.cdf(d2)
+        r, t = self.risk_free_rate, self.time_horizon
+        d1 = (np.log(asset_value / debt) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
+        d2 = d1 - sigma * np.sqrt(t)
+        call = asset_value * stats.norm.cdf(d1) - debt * np.exp(-r * t) * stats.norm.cdf(d2)
         return call, stats.norm.cdf(d1)
 
     def estimate_pd(
@@ -732,9 +733,9 @@ class MertonPD:
                 break
             asset_value, asset_volatility = new_av, new_sv
 
-        r, T = self.risk_free_rate, self.time_horizon
-        d2 = (np.log(asset_value / debt_face_value) + (r - 0.5 * asset_volatility**2) * T) / (
-            asset_volatility * np.sqrt(T)
+        r, t = self.risk_free_rate, self.time_horizon
+        d2 = (np.log(asset_value / debt_face_value) + (r - 0.5 * asset_volatility**2) * t) / (
+            asset_volatility * np.sqrt(t)
         )
         return {
             "pd": float(stats.norm.cdf(-d2)),
