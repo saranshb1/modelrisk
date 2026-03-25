@@ -91,8 +91,8 @@ class MonteCarloEngine:
         dt = T / steps
         paths = np.zeros((self.n_simulations, steps + 1))
         paths[:, 0] = S0
-        Z = self._rng.standard_normal((self.n_simulations, steps))
-        increments = np.exp((mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z)
+        noise = self._rng.standard_normal((self.n_simulations, steps))
+        increments = np.exp((mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * noise)
         paths[:, 1:] = S0 * np.cumprod(increments, axis=1)
         return paths
 
@@ -111,9 +111,9 @@ class MonteCarloEngine:
         np.ndarray of shape (n_simulations, n_assets).
         """
         corr = np.asarray(correlation_matrix)
-        L = np.linalg.cholesky(corr)
-        Z = self._rng.standard_normal((self.n_simulations, corr.shape[0]))
-        return Z @ L.T
+        chol = np.linalg.cholesky(corr)
+        draws = self._rng.standard_normal((self.n_simulations, corr.shape[0]))
+        return draws @ chol.T
 
     def percentile_summary(self, simulated: np.ndarray) -> pd.Series:
         """Return percentile summary of a simulated distribution."""

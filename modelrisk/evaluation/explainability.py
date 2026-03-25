@@ -75,14 +75,14 @@ class _KernelSHAPFallback:
 
     def shap_values(self, X: np.ndarray) -> np.ndarray:
         """Return approximate SHAP values of shape (n_instances, n_features)."""
-        X = np.atleast_2d(X)
-        n_instances, n_features = X.shape
+        x_mat = np.atleast_2d(X)
+        n_instances, n_features = x_mat.shape
         shap_vals = np.zeros((n_instances, n_features))
 
         bg_idx = self.rng.integers(0, len(self.background), size=self.n_samples)
         bg_samples = self.background[bg_idx]
 
-        for i, x in enumerate(X):
+        for i, x in enumerate(x_mat):
             baseline_pred = float(np.mean(self.predict_fn(bg_samples)))
             for j in range(n_features):
                 with_j = bg_samples.copy()
@@ -433,9 +433,9 @@ class Explainer:
         names = self.feature_names or [f"feature_{i}" for i in range(X_arr.shape[1])]
         rng = np.random.default_rng(self.random_state)
 
-        VALID_METRICS = ("auc", "accuracy", "mse")
-        if metric not in VALID_METRICS:
-            raise ValueError(f"metric must be one of {VALID_METRICS}, got '{metric}'.")
+        valid_metrics = ("auc", "accuracy", "mse")
+        if metric not in valid_metrics:
+            raise ValueError(f"metric must be one of {valid_metrics}, got '{metric}'.")
 
         def _score(X_in: np.ndarray) -> float:
             preds = self._predict_fn(X_in)

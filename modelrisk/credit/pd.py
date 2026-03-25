@@ -580,9 +580,9 @@ class XGBoostPD(_TreeMixin):
         RuntimeError if model not fitted.
         ValueError if importance_type is not recognised.
         """
-        VALID = {"gain", "weight", "cover", "total_gain", "total_cover"}
-        if importance_type not in VALID:
-            raise ValueError(f"importance_type must be one of {VALID}, got '{importance_type}'.")
+        valid_types = {"gain", "weight", "cover", "total_gain", "total_cover"}
+        if importance_type not in valid_types:
+            raise ValueError(f"importance_type must be one of {valid_types}, got '{importance_type}'.")
         if self._model is None:
             raise RuntimeError("Model has not been fitted yet.")
 

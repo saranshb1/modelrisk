@@ -105,9 +105,9 @@ class MacroOverlay:
         else:
             y = pd_arr
 
-        X = macro.values
+        x_mat = macro.values
         model = LinearRegression(fit_intercept=True)
-        model.fit(X, y)
+        model.fit(x_mat, y)
         self._coef = pd.Series(model.coef_, index=self._feature_names)
         self._intercept = float(model.intercept_)
         return self

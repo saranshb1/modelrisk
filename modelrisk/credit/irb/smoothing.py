@@ -66,13 +66,13 @@ class CycleAdjuster:
         n = len(y)
         lam = self.hp_lambda
         # Build second-difference matrix
-        D = np.zeros((n - 2, n))
+        diff2 = np.zeros((n - 2, n))
         for i in range(n - 2):
-            D[i, i] = 1
-            D[i, i + 1] = -2
-            D[i, i + 2] = 1
-        I = np.eye(n)
-        trend = np.linalg.solve(I + lam * D.T @ D, y)
+            diff2[i, i] = 1
+            diff2[i, i + 1] = -2
+            diff2[i, i + 2] = 1
+        eye = np.eye(n)
+        trend = np.linalg.solve(eye + lam * diff2.T @ diff2, y)
         return trend
 
 
@@ -317,26 +317,26 @@ class IRBCapital:
             rwa, expected_loss.
         """
         pd_c = max(float(pd), 0.0003)
-        R = self._correlation(pd_c)
+        corr_r = self._correlation(pd_c)
         z = stats.norm.ppf(self.confidence_level)
         z_pd = stats.norm.ppf(pd_c)
 
         conditional_pd = stats.norm.cdf(
-            (z_pd + np.sqrt(R) * z) / np.sqrt(1 - R)
+            (z_pd + np.sqrt(corr_r) * z) / np.sqrt(1 - corr_r)
         )
-        K = lgd * conditional_pd - lgd * pd_c
+        capital_k = lgd * conditional_pd - lgd * pd_c
 
         if self.maturity_adjustment and self.asset_class == "corporate":
-            K *= self._maturity_adj(pd_c, maturity)
+            capital_k *= self._maturity_adj(pd_c, maturity)
 
-        K = max(K, 0.0)
-        rwa = K * 12.5 * ead
+        capital_k = max(capital_k, 0.0)
+        rwa = capital_k * 12.5 * ead
         el = pd_c * lgd * ead
 
         return {
             "pd": pd_c, "lgd": lgd, "ead": ead,
-            "correlation": float(R),
-            "capital_requirement": float(K),
+            "correlation": float(corr_r),
+            "capital_requirement": float(capital_k),
             "rwa": float(rwa),
             "expected_loss": float(el),
         }

@@ -290,7 +290,7 @@ modelrisk/
 ## Development
 
 ```bash
-git clone https://github.com/yourusername/modelRisk
+git clone https://github.com/saranshb1/modelRisk
 cd modelRisk
 pip install -e ".[all]"
 pytest tests/ -v --cov=modelrisk
