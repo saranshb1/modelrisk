@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import roc_curve, roc_auc_score
 
 try:
     import matplotlib.pyplot as plt
@@ -57,7 +58,6 @@ class RiskPlotter:
         label: str = "Model",
     ):
         """Plot ROC curve with AUC and Gini annotations."""
-        from sklearn.metrics import roc_curve, roc_auc_score
 
         fpr, tpr, _ = roc_curve(y_true, y_score)
         auc = roc_auc_score(y_true, y_score)
@@ -153,15 +153,15 @@ class RiskPlotter:
     ):
         """Plot histogram of simulated or historical losses with VaR/CVaR lines."""
         fig, ax = plt.subplots(figsize=self.figsize)
-        ax.hist(losses, bins=80, 
-                density=True, alpha=0.7, 
+        ax.hist(losses, bins=80,
+                density=True, alpha=0.7,
                 color="steelblue", label="Loss distribution"
                 )
 
         if var_level is not None:
             var = float(np.quantile(losses, var_level))
-            ax.axvline(var, color="orange", 
-                        lw=2, linestyle="--", 
+            ax.axvline(var, color="orange",
+                        lw=2, linestyle="--",
                         label=f"VaR ({var_level:.1%}): {var:,.0f}")
 
         if cvar_level is not None:
@@ -169,8 +169,8 @@ class RiskPlotter:
             cvar = float(np.mean(losses[losses >= var_c]))
             #Add changes to fix CI E501 line too long error
             ax.axvline(cvar, 
-                        color="red", 
-                        lw=2, linestyle="--", 
+                        color="red",
+                        lw=2, linestyle="--",
                         label=f"CVaR ({cvar_level:.1%}): {cvar:,.0f}"
                         )
 
@@ -228,8 +228,8 @@ class RiskPlotter:
         ax.set_yticklabels(features)
         ax.axvline(base_value, color="black", lw=1, linestyle="--", label=f"Base: {base_value:.4f}")
         ax.axvline(
-                    prediction, 
-                    color="blue", lw=1.5, linestyle="-", 
+                    prediction,
+                    color="blue", lw=1.5, linestyle="-",
                     label=f"Prediction: {prediction:.4f}"
                     )
         ax.set_xlabel("Prediction")

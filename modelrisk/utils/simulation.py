@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
 import numpy as np
 import pandas as pd
 
@@ -23,7 +21,7 @@ class MonteCarloEngine:
     --------
     >>> engine = MonteCarloEngine(n_simulations=100_000)
     >>> losses = engine.simulate_losses(mean=0.0, std=0.02, horizon=10)
-    >>> paths = engine.gbm_paths(S0=100, mu=0.05, sigma=0.20, T=1.0, steps=252)
+    >>> paths = engine.gbm_paths(s0=100, mu=0.05, sigma=0.20, t=1.0, steps=252)
     """
 
     def __init__(self, n_simulations: int = 100_000, random_state: int | None = 42) -> None:
@@ -58,7 +56,7 @@ class MonteCarloEngine:
         elif distribution == "t5":
             from scipy import stats
             draws = (
-                stats.t.rvs(5, size=self.n_simulations, 
+                    stats.t.rvs(5, size=self.n_simulations,
                                 random_state=int(self._rng.integers(0, 2**31)))
                 * std * np.sqrt(horizon)
                 + mean * horizon
@@ -69,32 +67,32 @@ class MonteCarloEngine:
 
     def gbm_paths(
         self,
-        S0: float,
+        s0: float,
         mu: float,
         sigma: float,
-        T: float = 1.0,
+        t: float = 1.0,
         steps: int = 252,
     ) -> np.ndarray:
         """Simulate Geometric Brownian Motion asset price paths.
 
         Parameters
         ----------
-        S0 : float — initial price.
+        s0 : float — initial price.
         mu : float — annualised drift.
         sigma : float — annualised volatility.
-        T : float — time horizon in years.
+        t : float — time horizon in years.
         steps : int — number of time steps.
 
         Returns
         -------
         np.ndarray of shape (n_simulations, steps + 1).
         """
-        dt = T / steps
+        dt = t / steps
         paths = np.zeros((self.n_simulations, steps + 1))
-        paths[:, 0] = S0
+        paths[:, 0] = s0
         noise = self._rng.standard_normal((self.n_simulations, steps))
         increments = np.exp((mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * noise)
-        paths[:, 1:] = S0 * np.cumprod(increments, axis=1)
+        paths[:, 1:] = s0 * np.cumprod(increments, axis=1)
         return paths
 
     def correlated_normals(
