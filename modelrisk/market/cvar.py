@@ -54,7 +54,7 @@ class CVaR:
         self.mu_: float | None = None
         self.sigma_: float | None = None
 
-    def fit(self, returns: pd.Series | np.ndarray) -> "CVaR":
+    def fit(self, returns: pd.Series | np.ndarray) -> CVaR:
         """Fit the model on historical returns.
 
         Parameters

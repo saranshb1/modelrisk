@@ -86,7 +86,7 @@ class Scorecard:
     # Fit / transform
     # ------------------------------------------------------------------
 
-    def fit(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> "Scorecard":
+    def fit(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> Scorecard:
         """Fit WoE tables and the underlying logistic regression.
 
         Parameters

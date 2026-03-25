@@ -28,7 +28,7 @@ class BasePDModel(ABC):
         self,
         X: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
-    ) -> "BasePDModel":
+    ) -> BasePDModel:
         """Fit the model on training data.
 
         Parameters

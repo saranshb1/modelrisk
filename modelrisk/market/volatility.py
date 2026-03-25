@@ -32,7 +32,7 @@ class EWMAVolatility:
         self._returns: np.ndarray | None = None
         self._variance_series: np.ndarray | None = None
 
-    def fit(self, returns: pd.Series | np.ndarray) -> "EWMAVolatility":
+    def fit(self, returns: pd.Series | np.ndarray) -> EWMAVolatility:
         """Fit the EWMA model.
 
         Parameters
@@ -141,7 +141,7 @@ class GARCHVolatility:
         ll = -0.5 * np.sum(np.log(2 * np.pi * sigma2) + returns**2 / sigma2)
         return -ll
 
-    def fit(self, returns: pd.Series | np.ndarray) -> "GARCHVolatility":
+    def fit(self, returns: pd.Series | np.ndarray) -> GARCHVolatility:
         """Estimate GARCH(1,1) parameters by MLE.
 
         Parameters

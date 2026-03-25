@@ -100,7 +100,7 @@ class LogisticPD:
         self.coef_: np.ndarray | None = None
         self.intercept_: float | None = None
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> "LogisticPD":
+    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> LogisticPD:
         """Fit the logistic PD model.
 
         Parameters
@@ -254,7 +254,7 @@ class RandomForestPD(_TreeMixin):
         )
         self.feature_names_: list[str] | None = None
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> "RandomForestPD":
+    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> RandomForestPD:
         """Fit the random forest PD model.
 
         Parameters
@@ -391,7 +391,7 @@ class RandomForestPD(_TreeMixin):
         else:
             feat_idx = int(feature)
         result = _pdp(self._model, self._to_array(X), features=[feat_idx],
-                      grid_resolution=grid_resolution)
+                        grid_resolution=grid_resolution)
         feat_name = self.feature_names_[feat_idx] if self.feature_names_ else f"x{feat_idx}"
         return pd.DataFrame({
             "feature_value": result["grid_values"][0],
@@ -484,7 +484,7 @@ class XGBoostPD(_TreeMixin):
         self._evals_result: dict = {}
         self.feature_names_: list[str] | None = None
 
-    def _build_model(self, scale_pos_weight: float) -> "XGBClassifier":
+    def _build_model(self, scale_pos_weight: float) -> XGBClassifier:
         return XGBClassifier(
             n_estimators=self.n_estimators,
             max_depth=self.max_depth,
@@ -507,7 +507,7 @@ class XGBoostPD(_TreeMixin):
         y: pd.Series | np.ndarray,
         eval_set: list | None = None,
         verbose: bool = False,
-    ) -> "XGBoostPD":
+    ) -> XGBoostPD:
         """Fit the XGBoost PD model.
 
         Parameters

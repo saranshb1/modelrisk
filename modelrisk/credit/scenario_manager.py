@@ -177,7 +177,7 @@ class ScenarioManager:
         label: str = "",
         macro_paths: dict[str, float] | None = None,
         description: str = "",
-    ) -> "ScenarioManager":
+    ) -> ScenarioManager:
         """Add or replace a macroeconomic scenario.
 
         Parameters
@@ -220,7 +220,7 @@ class ScenarioManager:
         self._ecl_totals = {}
         return self
 
-    def remove_scenario(self, name: str) -> "ScenarioManager":
+    def remove_scenario(self, name: str) -> ScenarioManager:
         """Remove a scenario by name."""
         if name not in self._scenarios:
             raise KeyError(f"Scenario '{name}' not found.")
@@ -273,7 +273,7 @@ class ScenarioManager:
         lifetime_pd: pd.Series | np.ndarray | None = None,
         remaining_periods: pd.Series | np.ndarray | None = None,
         exposure_id: pd.Series | np.ndarray | None = None,
-    ) -> "ScenarioManager":
+    ) -> ScenarioManager:
         """Attach portfolio data for ECL calculation.
 
         Parameters
@@ -574,7 +574,7 @@ class ScenarioManager:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "ScenarioManager":
+    def from_yaml(cls, path: str | Path) -> ScenarioManager:
         """Load scenario configuration from a YAML file.
 
         No-code entry point — users define scenarios in YAML and run
@@ -596,17 +596,17 @@ class ScenarioManager:
             discount_rate: 0.05
             period_type: monthly
             scenarios:
-              base:
+            base:
                 weight: 0.50
                 pd_scalar: 1.0
                 label: Central
                 description: Base economic outlook
-              downside:
+            downside:
                 weight: 0.30
                 pd_scalar: 1.8
                 label: Adverse
                 description: Severe recession scenario
-              upside:
+            upside:
                 weight: 0.20
                 pd_scalar: 0.7
                 label: Benign
@@ -638,7 +638,7 @@ class ScenarioManager:
         return mgr
 
     @classmethod
-    def from_dict(cls, config: dict) -> "ScenarioManager":
+    def from_dict(cls, config: dict) -> ScenarioManager:
         """Load scenario configuration from a Python dictionary.
 
         Useful when scenarios are defined programmatically or loaded

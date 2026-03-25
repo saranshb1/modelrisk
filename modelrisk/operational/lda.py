@@ -61,7 +61,7 @@ class LossDistributionApproach:
         self,
         frequencies: pd.Series | np.ndarray,
         severities: pd.Series | np.ndarray,
-    ) -> "LossDistributionApproach":
+    ) -> LossDistributionApproach:
         """Fit frequency and severity distributions by MLE.
 
         Parameters

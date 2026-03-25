@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+#Third-party imports
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 
 try:
     import matplotlib.pyplot as plt
@@ -168,7 +169,7 @@ class RiskPlotter:
             var_c = float(np.quantile(losses, cvar_level))
             cvar = float(np.mean(losses[losses >= var_c]))
             #Add changes to fix CI E501 line too long error
-            ax.axvline(cvar, 
+            ax.axvline(cvar,
                         color="red",
                         lw=2, linestyle="--",
                         label=f"CVaR ({cvar_level:.1%}): {cvar:,.0f}"

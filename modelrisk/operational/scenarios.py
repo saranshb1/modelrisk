@@ -35,7 +35,7 @@ class ScenarioAnalysis:
         severity_mean: float,
         severity_std: float,
         severity_dist: str = "lognormal",
-    ) -> "ScenarioAnalysis":
+    ) -> ScenarioAnalysis:
         """Add a risk scenario.
 
         Parameters
@@ -97,7 +97,8 @@ class ScenarioAnalysis:
         df = pd.DataFrame(rows)
         total = pd.DataFrame(
             [{"scenario": "TOTAL", "frequency": df["frequency"].sum(),
-              "severity_mean": np.nan, "expected_annual_loss": df["expected_annual_loss"].sum()}]
+                "severity_mean": np.nan, 
+                "expected_annual_loss": df["expected_annual_loss"].sum()}]
         )
         return pd.concat([df, total], ignore_index=True)
 
@@ -157,7 +158,7 @@ class ExtremeValueModel:
         self._n_exceedances: int | None = None
         self._threshold_used: float | None = None
 
-    def fit(self, losses: pd.Series | np.ndarray) -> "ExtremeValueModel":
+    def fit(self, losses: pd.Series | np.ndarray) -> ExtremeValueModel:
         """Fit the GPD to exceedances above the threshold.
 
         Parameters

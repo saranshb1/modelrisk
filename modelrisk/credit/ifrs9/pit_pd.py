@@ -134,7 +134,7 @@ class PITCalibrator:
         observed_default_rate: float | None = None,
         model_long_run_dr: float | None = None,
         y_cal: np.ndarray | None = None,
-    ) -> "PITCalibrator":
+    ) -> PITCalibrator:
         """Fit the calibration layer.
 
         Parameters

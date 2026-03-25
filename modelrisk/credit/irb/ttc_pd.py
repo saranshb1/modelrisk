@@ -45,7 +45,7 @@ class TTCCalibrator:
         self,
         annual_default_rates: pd.Series | np.ndarray,
         weights: np.ndarray | None = None,
-    ) -> "TTCCalibrator":
+    ) -> TTCCalibrator:
         """Estimate long-run average default rate from historical data.
 
         Parameters

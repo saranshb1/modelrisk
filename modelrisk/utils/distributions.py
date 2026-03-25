@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+#Third-party imports
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -90,7 +91,7 @@ class DistributionFitter:
         self.distributions = distributions or self.DEFAULT_DISTRIBUTIONS
         self._results: list[dict] = []
 
-    def fit(self, data: np.ndarray | pd.Series, **kwargs) -> "DistributionFitter":
+    def fit(self, data: np.ndarray | pd.Series, **kwargs) -> DistributionFitter:
         """Fit all candidate distributions.
 
         Parameters
@@ -107,7 +108,7 @@ class DistributionFitter:
             except Exception as e:
                 self._results.append(
                     {"distribution": dist_name, "aic": np.inf, "bic": np.inf,
-                     "error": str(e)}
+                    "error": str(e)}
                 )
         return self
 

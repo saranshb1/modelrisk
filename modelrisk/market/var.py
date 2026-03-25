@@ -34,7 +34,7 @@ class HistoricalVaR:
         self.holding_period = holding_period
         self._returns: np.ndarray | None = None
 
-    def fit(self, returns: pd.Series | np.ndarray) -> "HistoricalVaR":
+    def fit(self, returns: pd.Series | np.ndarray) -> HistoricalVaR:
         """Store the historical return series.
 
         Parameters
@@ -104,7 +104,7 @@ class ParametricVaR:
         self.mu_: float | None = None
         self.sigma_: float | None = None
 
-    def fit(self, returns: pd.Series | np.ndarray) -> "ParametricVaR":
+    def fit(self, returns: pd.Series | np.ndarray) -> ParametricVaR:
         r = np.asarray(returns, dtype=float)
         self.mu_ = float(np.mean(r))
         self.sigma_ = float(np.std(r, ddof=1))
@@ -171,7 +171,7 @@ class MonteCarloVaR:
         self.mu_: float | None = None
         self.sigma_: float | None = None
 
-    def fit(self, returns: pd.Series | np.ndarray) -> "MonteCarloVaR":
+    def fit(self, returns: pd.Series | np.ndarray) -> MonteCarloVaR:
         r = np.asarray(returns, dtype=float)
         self.mu_ = float(np.mean(r))
         self.sigma_ = float(np.std(r, ddof=1))

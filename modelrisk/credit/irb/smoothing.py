@@ -190,7 +190,7 @@ class PITtoTTCBridge:
         self,
         pit_pds: pd.Series | np.ndarray,
         ttc_pds: pd.Series | np.ndarray,
-    ) -> "PITtoTTCBridge":
+    ) -> PITtoTTCBridge:
         """Estimate the PIT → TTC conversion from historical paired data.
 
         Parameters
@@ -209,7 +209,7 @@ class PITtoTTCBridge:
             self._scalar = float(np.mean(ttc) / max(np.mean(pit), 1e-9))
         else:
             logit = lambda p: np.log(np.clip(p, 1e-9, 1 - 1e-9) /
-                                     (1 - np.clip(p, 1e-9, 1 - 1e-9)))
+                                        (1 - np.clip(p, 1e-9, 1 - 1e-9)))
             self._logit_offset = float(np.mean(logit(ttc) - logit(pit)))
         return self
 

@@ -56,7 +56,7 @@ class BetaLGD:
         )
         return -ll
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> "BetaLGD":
+    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> BetaLGD:
         """Fit the Beta LGD model.
 
         Parameters
@@ -144,7 +144,7 @@ class LinearLGD:
         self._scaler = StandardScaler() if scale_features else None
         self.feature_names_: list[str] | None = None
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> "LinearLGD":
+    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> LinearLGD:
         if isinstance(X, pd.DataFrame):
             self.feature_names_ = list(X.columns)
             X_arr = X.values

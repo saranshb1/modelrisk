@@ -42,7 +42,7 @@ class LifetimePDCurve:
         self,
         marginal_pds: np.ndarray,
         remaining_periods: int,
-    ) -> "LifetimePDCurve":
+    ) -> LifetimePDCurve:
         """Store the forward PD curve truncated to remaining maturity.
 
         Parameters

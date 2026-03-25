@@ -73,7 +73,7 @@ class MacroOverlay:
         historical_pd: pd.Series | np.ndarray,
         macro_df: pd.DataFrame,
         lag_periods: int = 0,
-    ) -> "MacroOverlay":
+    ) -> MacroOverlay:
         """Estimate PD sensitivity to macroeconomic variables via OLS.
 
         Parameters
