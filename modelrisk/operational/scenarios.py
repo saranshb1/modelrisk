@@ -18,7 +18,8 @@ class ScenarioAnalysis:
     --------
     >>> sa = ScenarioAnalysis()
     >>> sa.add_scenario("cyber breach", frequency=0.2, severity_mean=500_000, severity_std=200_000)
-    >>> sa.add_scenario("rogue trader", frequency=0.05, severity_mean=5_000_000, severity_std=2_000_000)
+    >>> sa.add_scenario("rogue trader", frequency=0.05, 
+            severity_mean=5_000_000, severity_std=2_000_000)
     >>> sa.expected_annual_loss()
     """
 

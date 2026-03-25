@@ -93,7 +93,8 @@ class LossDistributionApproach:
         # Fit severity distribution
         if self.severity_dist == "lognormal":
             log_sev = np.log(sev[sev > 0])
-            self._sev_params = {"mu": float(np.mean(log_sev)), "sigma": float(np.std(log_sev, ddof=1))}
+            self._sev_params = {"mu": float(np.mean(log_sev)), 
+                                "sigma": float(np.std(log_sev, ddof=1))}
         elif self.severity_dist == "gamma":
             shape, loc, scale = stats.gamma.fit(sev, floc=0)
             self._sev_params = {"shape": shape, "scale": scale}

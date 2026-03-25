@@ -582,7 +582,7 @@ class XGBoostPD(_TreeMixin):
         """
         valid_types = {"gain", "weight", "cover", "total_gain", "total_cover"}
         if importance_type not in valid_types:
-            raise ValueError(f"importance_type must be one of {valid_types}, got '{importance_type}'.")
+            raise ValueError(f"Importance must be one of {valid_types}, got '{importance_type}'.")
         if self._model is None:
             raise RuntimeError("Model has not been fitted yet.")
 
@@ -627,7 +627,7 @@ class XGBoostPD(_TreeMixin):
             for metric_name, values in metrics.items():
                 for rnd, val in enumerate(values):
                     rows.append({"round": rnd + 1, "set": set_name,
-                                 "metric": metric_name, "value": val})
+                                    "metric": metric_name, "value": val})
         return pd.DataFrame(rows)
 
     def best_iteration(self) -> int | None:
@@ -726,7 +726,7 @@ class MertonPD:
 
         for _ in range(self.max_iter):
             _, delta = self._black_scholes_call(asset_value, debt_face_value, asset_volatility)
-            new_av = equity_value + debt_face_value * np.exp(-self.risk_free_rate * self.time_horizon)
+            new_av = equity_value + (debt_face_value*np.exp(-self.risk_free_rate*self.time_horizon))
             new_sv = equity_volatility * equity_value / (delta * asset_value)
             if abs(new_av - asset_value) < self.tol and abs(new_sv - asset_volatility) < self.tol:
                 break

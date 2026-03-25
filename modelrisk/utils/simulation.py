@@ -58,7 +58,8 @@ class MonteCarloEngine:
         elif distribution == "t5":
             from scipy import stats
             draws = (
-                stats.t.rvs(5, size=self.n_simulations, random_state=int(self._rng.integers(0, 2**31)))
+                stats.t.rvs(5, size=self.n_simulations, 
+                                random_state=int(self._rng.integers(0, 2**31)))
                 * std * np.sqrt(horizon)
                 + mean * horizon
             )
