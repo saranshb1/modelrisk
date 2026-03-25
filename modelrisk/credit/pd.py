@@ -9,8 +9,8 @@ MertonPD        Structural model based on Merton (1974)
 
 All statistical models share a common interface::
 
-    model.fit(X, y)                   -> self
-    model.predict_proba(X)            -> np.ndarray
+    model.fit(x_pd, y)                   -> self
+    model.predict_proba(x_pd)            -> np.ndarray
     model.feature_importance_summary() -> pd.DataFrame
 
 LogisticPD additionally exposes ``coefficient_summary()``.
@@ -62,8 +62,8 @@ class _TreeMixin:
         )
 
     @staticmethod
-    def _to_array(X: pd.DataFrame | np.ndarray) -> np.ndarray:
-        return X.values if isinstance(X, pd.DataFrame) else np.asarray(X)
+    def _to_array(x_pd: pd.DataFrame | np.ndarray) -> np.ndarray:
+        return x_pd.values if isinstance(x_pd, pd.DataFrame) else np.asarray(x_pd)
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ class LogisticPD:
 
     Parameters
     ----------
-    C : float
+    c : float
         Inverse regularisation strength.
     max_iter : int
     scale_features : bool
@@ -90,47 +90,47 @@ class LogisticPD:
     >>> model.feature_importance_summary()
     """
 
-    def __init__(self, C: float = 1.0, max_iter: int = 1000, scale_features: bool = True) -> None:
-        self.C = C
+    def __init__(self, c: float = 1.0, max_iter: int = 1000, scale_features: bool = True) -> None:
+        self.c = c
         self.max_iter = max_iter
         self.scale_features = scale_features
-        self._model = LogisticRegression(C=C, max_iter=max_iter, solver="lbfgs")
+        self._model = LogisticRegression(C=c, max_iter=max_iter, solver="lbfgs")
         self._scaler = StandardScaler() if scale_features else None
         self.feature_names_: list[str] | None = None
         self.coef_: np.ndarray | None = None
         self.intercept_: float | None = None
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> LogisticPD:
+    def fit(self, x_pd: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> LogisticPD:
         """Fit the logistic PD model.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_pd : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,) — binary default indicator.
 
         Returns
         -------
         self
         """
-        if isinstance(X, pd.DataFrame):
-            self.feature_names_ = list(X.columns)
-            X_arr = X.values
+        if isinstance(x_pd, pd.DataFrame):
+            self.feature_names_ = list(x_pd.columns)
+            x_arr = x_pd.values
         else:
-            X_arr = np.asarray(X)
+            x_arr = np.asarray(x_pd)
         y_arr = np.asarray(y)
         if self._scaler is not None:
-            X_arr = self._scaler.fit_transform(X_arr)
-        self._model.fit(X_arr, y_arr)
+            x_arr = self._scaler.fit_transform(x_arr)
+        self._model.fit(x_arr, y_arr)
         self.coef_ = self._model.coef_[0]
         self.intercept_ = float(self._model.intercept_[0])
         return self
 
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict_proba(self, x_pd: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Return predicted default probabilities (shape n_samples,)."""
-        X_arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X)
+        x_arr = x_pd.values if isinstance(x_pd, pd.DataFrame) else np.asarray(x_pd)
         if self._scaler is not None:
-            X_arr = self._scaler.transform(X_arr)
-        return self._model.predict_proba(X_arr)[:, 1]
+            x_arr = self._scaler.transform(x_arr)
+        return self._model.predict_proba(x_arr)[:, 1]
 
     def coefficient_summary(self) -> pd.DataFrame:
         """Feature coefficients and odds ratios, sorted by |coefficient|.
@@ -254,28 +254,28 @@ class RandomForestPD(_TreeMixin):
         )
         self.feature_names_: list[str] | None = None
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> RandomForestPD:
+    def fit(self, x_pd: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> RandomForestPD:
         """Fit the random forest PD model.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_pd : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,) — binary default indicator.
 
         Returns
         -------
         self
         """
-        if isinstance(X, pd.DataFrame):
-            self.feature_names_ = list(X.columns)
-        self._model.fit(self._to_array(X), np.asarray(y))
+        if isinstance(x_pd, pd.DataFrame):
+            self.feature_names_ = list(x_pd.columns)
+        self._model.fit(self._to_array(x_pd), np.asarray(y))
         return self
 
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict_proba(self, x_pd: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Return predicted default probabilities (shape n_samples,)."""
         if not hasattr(self._model, "classes_"):
             raise RuntimeError("Model has not been fitted yet.")
-        return self._model.predict_proba(self._to_array(X))[:, 1]
+        return self._model.predict_proba(self._to_array(x_pd))[:, 1]
 
     # --- RandomForest-specific -------------------------------------------------
 
@@ -361,7 +361,7 @@ class RandomForestPD(_TreeMixin):
 
     def partial_dependence(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_pd: pd.DataFrame | np.ndarray,
         feature: str | int,
         grid_resolution: int = 50,
     ) -> pd.DataFrame:
@@ -390,7 +390,7 @@ class RandomForestPD(_TreeMixin):
             feat_idx = self.feature_names_.index(feature)
         else:
             feat_idx = int(feature)
-        result = _pdp(self._model, self._to_array(X), features=[feat_idx],
+        result = _pdp(self._model, self._to_array(x_pd), features=[feat_idx],
                         grid_resolution=grid_resolution)
         feat_name = self.feature_names_[feat_idx] if self.feature_names_ else f"x{feat_idx}"
         return pd.DataFrame({
@@ -503,7 +503,7 @@ class XGBoostPD(_TreeMixin):
 
     def fit(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_pd: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
         eval_set: list | None = None,
         verbose: bool = False,
@@ -514,7 +514,7 @@ class XGBoostPD(_TreeMixin):
         ----------
         X : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,) — binary default indicator.
-        eval_set : list of (X, y) tuples, optional
+        eval_set : list of (x_pd, y) tuples, optional
             Validation sets for early stopping and learning curve logging.
             Typically ``[(X_val, y_val)]``. Required when
             ``early_stopping_rounds`` is set.
@@ -524,9 +524,9 @@ class XGBoostPD(_TreeMixin):
         -------
         self
         """
-        if isinstance(X, pd.DataFrame):
-            self.feature_names_ = list(X.columns)
-        X_arr = self._to_array(X)
+        if isinstance(x_pd, pd.DataFrame):
+            self.feature_names_ = list(x_pd.columns)
+        x_arr = self._to_array(x_pd)
         y_arr = np.asarray(y)
 
         if self.scale_pos_weight is not None:
@@ -542,21 +542,21 @@ class XGBoostPD(_TreeMixin):
         fit_kwargs: dict = {"verbose": verbose}
         if eval_set is not None:
             fit_kwargs["eval_set"] = [
-                (self._to_array(Xe), np.asarray(ye)) for Xe, ye in eval_set
+                (self._to_array(xe), np.asarray(ye)) for xe, ye in eval_set
             ]
 
-        self._model.fit(X_arr, y_arr, **fit_kwargs)
+        self._model.fit(x_arr, y_arr, **fit_kwargs)
 
         if hasattr(self._model, "evals_result_"):
             self._evals_result = self._model.evals_result_
 
         return self
 
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict_proba(self, x_pd: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Return predicted default probabilities (shape n_samples,)."""
         if self._model is None:
             raise RuntimeError("Model has not been fitted yet.")
-        return self._model.predict_proba(self._to_array(X))[:, 1]
+        return self._model.predict_proba(self._to_array(x_pd))[:, 1]
 
     # --- XGBoost-specific ------------------------------------------------------
 

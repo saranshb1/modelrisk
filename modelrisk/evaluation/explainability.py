@@ -73,9 +73,9 @@ class _KernelSHAPFallback:
         self.n_samples = n_samples
         self.rng = np.random.default_rng(random_state)
 
-    def shap_values(self, X: np.ndarray) -> np.ndarray:
+    def shap_values(self, x_ex: np.ndarray) -> np.ndarray:
         """Return approximate SHAP values of shape (n_instances, n_features)."""
-        x_mat = np.atleast_2d(X)
+        x_mat = np.atleast_2d(x_ex)
         n_instances, n_features = x_mat.shape
         shap_vals = np.zeros((n_instances, n_features))
 
@@ -272,17 +272,17 @@ class Explainer:
 
     def shap_values(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_ex: pd.DataFrame | np.ndarray,
         n_background_samples: int = 100,
     ) -> pd.DataFrame:
-        """Compute SHAP values for all instances in X.
+        """Compute SHAP values for all instances in x_ex.
 
         Uses the ``shap`` library (TreeExplainer → KernelExplainer) when
         installed; falls back to the built-in kernel SHAP approximation.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_ex : array-like of shape (n_samples, n_features)
         n_background_samples : int
             Rows of background to summarise with ``shap.kmeans`` when using
             the ``shap`` library's KernelExplainer.
@@ -291,12 +291,12 @@ class Explainer:
         -------
         pd.DataFrame of shape (n_samples, n_features) with SHAP values.
         """
-        X_arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X, dtype=float)
-        names = self.feature_names or [f"feature_{i}" for i in range(X_arr.shape[1])]
-        background = self._background if self._background is not None else X_arr
+        x_arr = x_ex.values if isinstance(x_ex, pd.DataFrame) else np.asarray(x_ex, dtype=float)
+        names = self.feature_names or [f"feature_{i}" for i in range(x_arr.shape[1])]
+        background = self._background if self._background is not None else x_arr
 
         if _SHAP_AVAILABLE:
-            return self._shap_library(X_arr, background, names, n_background_samples)
+            return self._shap_library(x_arr, background, names, n_background_samples)
 
         warnings.warn(
             "shap not installed — using built-in kernel SHAP approximation. "
@@ -304,33 +304,33 @@ class Explainer:
             ImportWarning,
             stacklevel=2,
         )
-        return self._shap_fallback(X_arr, background, names)
+        return self._shap_fallback(x_arr, background, names)
 
     def _shap_library(
         self,
-        X_arr: np.ndarray,
+        x_arr: np.ndarray,
         background: np.ndarray,
         names: list[str],
         n_background_samples: int,
     ) -> pd.DataFrame:
         try:
             explainer = _shap.TreeExplainer(self.model)
-            vals = explainer.shap_values(X_arr)
+            vals = explainer.shap_values(x_arr)
             if isinstance(vals, list):
                 vals = vals[1]
         except Exception:
             summary = _shap.kmeans(background, min(n_background_samples, len(background)))
             explainer = _shap.KernelExplainer(self._predict_fn, summary)
-            vals = explainer.shap_values(X_arr, silent=True)
+            vals = explainer.shap_values(x_arr, silent=True)
         return pd.DataFrame(vals, columns=names)
 
     def _shap_fallback(
-        self, X_arr: np.ndarray, background: np.ndarray, names: list[str]
+        self, x_arr: np.ndarray, background: np.ndarray, names: list[str]
     ) -> pd.DataFrame:
         fallback = _KernelSHAPFallback(
             self._predict_fn, background, random_state=self.random_state
         )
-        return pd.DataFrame(fallback.shap_values(X_arr), columns=names)
+        return pd.DataFrame(fallback.shap_values(x_arr), columns=names)
 
     # ------------------------------------------------------------------
     # Local linear explanations (replaces LIME)
@@ -402,7 +402,7 @@ class Explainer:
 
     def permutation_importance(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_ex: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
         n_repeats: int = 10,
         metric: str = "auc",
@@ -414,7 +414,7 @@ class Explainer:
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_ex : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,)
         n_repeats : int
             Number of shuffle repetitions per feature.
@@ -428,31 +428,31 @@ class Explainer:
         """
         from sklearn.metrics import accuracy_score, mean_squared_error, roc_auc_score
 
-        X_arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X, dtype=float)
+        x_arr = x_ex.values if isinstance(x_ex, pd.DataFrame) else np.asarray(x_ex, dtype=float)
         y_arr = np.asarray(y)
-        names = self.feature_names or [f"feature_{i}" for i in range(X_arr.shape[1])]
+        names = self.feature_names or [f"feature_{i}" for i in range(x_arr.shape[1])]
         rng = np.random.default_rng(self.random_state)
 
         valid_metrics = ("auc", "accuracy", "mse")
         if metric not in valid_metrics:
             raise ValueError(f"metric must be one of {valid_metrics}, got '{metric}'.")
 
-        def _score(X_in: np.ndarray) -> float:
-            preds = self._predict_fn(X_in)
+        def _score(x_in: np.ndarray) -> float:
+            preds = self._predict_fn(x_in)
             if metric == "auc":
                 return float(roc_auc_score(y_arr, preds))
             if metric == "accuracy":
                 return float(accuracy_score(y_arr, (preds >= 0.5).astype(int)))
             return -float(mean_squared_error(y_arr, preds))
 
-        baseline = _score(X_arr)
+        baseline = _score(x_arr)
         results = []
         for j, name in enumerate(names):
             drops = []
             for _ in range(n_repeats):
-                X_perm = X_arr.copy()
-                X_perm[:, j] = rng.permutation(X_perm[:, j])
-                drops.append(baseline - _score(X_perm))
+                x_perm = x_arr.copy()
+                x_perm[:, j] = rng.permutation(x_perm[:, j])
+                drops.append(baseline - _score(x_perm))
             results.append({
                 "feature": name,
                 "mean_importance": float(np.mean(drops)),
@@ -471,14 +471,14 @@ class Explainer:
 
     def feature_importance_summary(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_ex: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray | None = None,
     ) -> pd.DataFrame:
         """Combined feature importance: mean |SHAP| + optional permutation importance.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_ex : array-like of shape (n_samples, n_features)
         y : array-like, optional
             If provided, permutation importance is computed and merged in.
 
@@ -486,7 +486,7 @@ class Explainer:
         -------
         pd.DataFrame sorted by mean |SHAP| descending.
         """
-        shap_df = self.shap_values(X)
+        shap_df = self.shap_values(x_ex)
         summary = (
             shap_df.abs().mean()
             .rename("mean_abs_shap")
@@ -497,7 +497,7 @@ class Explainer:
         )
 
         if y is not None:
-            perm = self.permutation_importance(X, y)
+            perm = self.permutation_importance(x_ex, y)
             summary = summary.merge(
                 perm[["feature", "mean_importance"]].rename(
                     columns={"mean_importance": "permutation_importance"}

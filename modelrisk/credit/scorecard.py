@@ -86,12 +86,12 @@ class Scorecard:
     # Fit / transform
     # ------------------------------------------------------------------
 
-    def fit(self, X: pd.DataFrame, y: pd.Series | np.ndarray) -> Scorecard:
+    def fit(self, x_sc: pd.DataFrame, y: pd.Series | np.ndarray) -> Scorecard:
         """Fit WoE tables and the underlying logistic regression.
 
         Parameters
         ----------
-        X : pd.DataFrame
+        x_sc : pd.DataFrame
             Pre-binned feature matrix (each column should be categorical or
             ordinal bins — use pd.cut / pd.qcut before calling fit).
         y : array-like of shape (n_samples,)
@@ -102,49 +102,49 @@ class Scorecard:
         self
         """
         y_s = pd.Series(np.asarray(y), name="target")
-        self.feature_names_ = list(X.columns)
+        self.feature_names_ = list(x_sc.columns)
 
         for col in self.feature_names_:
-            tbl = self._compute_woe_table(X[col], y_s)
+            tbl = self._compute_woe_table(x_sc[col], y_s)
             self.woe_tables_[col] = tbl
             self.iv_[col] = float(tbl["iv"].sum())
 
-        X_woe = self._apply_woe(X)
+        x_woe = self._apply_woe(x_sc)
         self._model = LogisticRegression(C=1.0, max_iter=1000, solver="lbfgs")
-        self._model.fit(X_woe.values, y_s.values)
+        self._model.fit(x_woe.values, y_s.values)
         return self
 
-    def _apply_woe(self, X: pd.DataFrame) -> pd.DataFrame:
+    def _apply_woe(self, x_sc: pd.DataFrame) -> pd.DataFrame:
         """Encode features using fitted WoE tables."""
-        result = pd.DataFrame(index=X.index)
+        result = pd.DataFrame(index=x_sc.index)
         for col in self.feature_names_:
             tbl = self.woe_tables_[col].set_index("bin")["woe"]
-            mapped = X[col].astype(object).map(tbl)
+            mapped = x_sc[col].astype(object).map(tbl)
             result[col] = pd.to_numeric(mapped, errors="coerce").fillna(0.0)
         return result
 
-    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+    def predict_proba(self, x_sc: pd.DataFrame) -> np.ndarray:
         """Return predicted PD from the scorecard model."""
         if self._model is None:
             raise RuntimeError("Scorecard has not been fitted yet.")
-        X_woe = self._apply_woe(X)
-        return self._model.predict_proba(X_woe.values)[:, 1]
+        x_woe = self._apply_woe(x_sc)
+        return self._model.predict_proba(x_woe.values)[:, 1]
 
-    def score(self, X: pd.DataFrame) -> np.ndarray:
+    def score(self, x_sc: pd.DataFrame) -> np.ndarray:
         """Convert predicted probabilities to scorecard points.
 
         Higher scores indicate lower risk (better creditworthiness).
 
         Parameters
         ----------
-        X : pd.DataFrame
+        x_sc : pd.DataFrame
             Pre-binned feature matrix.
 
         Returns
         -------
         np.ndarray of integer scorecard points.
         """
-        proba = self.predict_proba(X)
+        proba = self.predict_proba(x_sc)
         odds = (1 - proba) / np.clip(proba, 1e-9, None)
         scores = self._offset + self._factor * np.log(odds)
         return np.round(scores).astype(int)
