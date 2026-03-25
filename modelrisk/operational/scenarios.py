@@ -97,7 +97,7 @@ class ScenarioAnalysis:
         df = pd.DataFrame(rows)
         total = pd.DataFrame(
             [{"scenario": "TOTAL", "frequency": df["frequency"].sum(),
-                "severity_mean": np.nan, 
+                "severity_mean": np.nan,
                 "expected_annual_loss": df["expected_annual_loss"].sum()}]
         )
         return pd.concat([df, total], ignore_index=True)

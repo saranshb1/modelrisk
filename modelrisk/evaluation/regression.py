@@ -110,7 +110,6 @@ class RegressionMetrics:
                 self.adjusted_r_squared(n_features),
                 "R² penalised for model complexity",
             ),
-            #("Adjusted R²", self.adjusted_r_squared(n_features), "R² penalised for model complexity"),
             ("MAPE (%)", self.mape(), "Mean absolute percentage error"),
             ("Median AE", self.median_absolute_error(), "Median absolute error"),
             ("Max error", self.max_error(), "Worst-case absolute prediction error"),

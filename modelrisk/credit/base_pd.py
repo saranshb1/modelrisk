@@ -26,14 +26,14 @@ class BasePDModel(ABC):
     @abstractmethod
     def fit(
         self,
-        X: pd.DataFrame | np.ndarray,
+        x_base: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
     ) -> BasePDModel:
         """Fit the model on training data.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_base : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,) — binary default indicator.
 
         Returns
@@ -42,12 +42,12 @@ class BasePDModel(ABC):
         """
 
     @abstractmethod
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict_proba(self, x_base: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Return raw predicted default probabilities.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_base : array-like of shape (n_samples, n_features)
 
         Returns
         -------

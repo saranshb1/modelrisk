@@ -38,13 +38,13 @@ class BetaLGD:
     def _logistic(self, x: np.ndarray) -> np.ndarray:
         return 1.0 / (1.0 + np.exp(-x))
 
-    def _neg_log_likelihood(self, params: np.ndarray, X: np.ndarray, y: np.ndarray) -> float:
-        n_features = X.shape[1]
+    def _neg_log_likelihood(self, params: np.ndarray, x_lgd: np.ndarray, y: np.ndarray) -> float:
+        n_features = x_lgd.shape[1]
         beta = params[:n_features]
         log_phi = params[n_features]
         phi = np.exp(log_phi)
 
-        mu = self._logistic(X @ beta)
+        mu = self._logistic(x_lgd @ beta)
         mu = np.clip(mu, 1e-6, 1 - 1e-6)
         y = np.clip(y, 1e-6, 1 - 1e-6)
 
@@ -56,12 +56,12 @@ class BetaLGD:
         )
         return -ll
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> BetaLGD:
+    def fit(self, x_lgd: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> BetaLGD:
         """Fit the Beta LGD model.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_lgd : array-like of shape (n_samples, n_features)
         y : array-like of shape (n_samples,)
             LGD values in [0, 1].
 
@@ -69,25 +69,25 @@ class BetaLGD:
         -------
         self
         """
-        if isinstance(X, pd.DataFrame):
-            self.feature_names_ = list(X.columns)
-            X_arr = X.values.astype(float)
+        if isinstance(x_lgd, pd.DataFrame):
+            self.feature_names_ = list(x_lgd.columns)
+            x_arr = x_lgd.values.astype(float)
         else:
-            X_arr = np.asarray(X, dtype=float)
+            x_arr = np.asarray(x_lgd, dtype=float)
 
         y_arr = np.asarray(y, dtype=float)
 
         if self.fit_intercept:
-            X_arr = np.column_stack([np.ones(len(X_arr)), X_arr])
+            x_arr = np.column_stack([np.ones(len(x_arr)), x_arr])
 
-        n_params = X_arr.shape[1]
+        n_params = x_arr.shape[1]
         x0 = np.zeros(n_params + 1)
         x0[-1] = np.log(5.0)  # initial log-phi
 
         result = optimize.minimize(
             self._neg_log_likelihood,
             x0,
-            args=(X_arr, y_arr),
+            args=(x_arr, y_arr),
             method="L-BFGS-B",
             options={"maxiter": 1000},
         )
@@ -101,12 +101,12 @@ class BetaLGD:
         self.phi_ = float(np.exp(result.x[-1]))
         return self
 
-    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict(self, x_lgd: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Predict mean LGD.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        x_lgd : array-like of shape (n_samples, n_features)
 
         Returns
         -------
@@ -114,8 +114,8 @@ class BetaLGD:
         """
         if self.coef_ is None:
             raise RuntimeError("Model has not been fitted yet.")
-        X_arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X, dtype=float)
-        linear = X_arr @ self.coef_ + self.intercept_
+        x_arr = x_lgd.values if isinstance(x_lgd, pd.DataFrame) else np.asarray(x_lgd, dtype=float)
+        linear = x_arr @ self.coef_ + self.intercept_
         return self._logistic(linear)
 
 
@@ -144,21 +144,21 @@ class LinearLGD:
         self._scaler = StandardScaler() if scale_features else None
         self.feature_names_: list[str] | None = None
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> LinearLGD:
-        if isinstance(X, pd.DataFrame):
-            self.feature_names_ = list(X.columns)
-            X_arr = X.values
+    def fit(self, x_lgd: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> LinearLGD:
+        if isinstance(x_lgd, pd.DataFrame):
+            self.feature_names_ = list(x_lgd.columns)
+            x_arr = x_lgd.values
         else:
-            X_arr = np.asarray(X)
+            x_arr = np.asarray(x_lgd)
 
         if self._scaler:
-            X_arr = self._scaler.fit_transform(X_arr)
+            x_arr = self._scaler.fit_transform(x_arr)
 
-        self._model.fit(X_arr, np.asarray(y))
+        self._model.fit(x_arr, np.asarray(y))
         return self
 
-    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
-        X_arr = X.values if isinstance(X, pd.DataFrame) else np.asarray(X)
+    def predict(self, x_lgd: pd.DataFrame | np.ndarray) -> np.ndarray:
+        x_arr = x_lgd.values if isinstance(x_lgd, pd.DataFrame) else np.asarray(x_lgd)
         if self._scaler:
-            X_arr = self._scaler.transform(X_arr)
-        return np.clip(self._model.predict(X_arr), 0.0, 1.0)
+            x_arr = self._scaler.transform(x_arr)
+        return np.clip(self._model.predict(x_arr), 0.0, 1.0)

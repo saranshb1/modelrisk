@@ -46,7 +46,7 @@ pit_cal.calibrate(
 )
 portfolio["pit_pd"] = pit_cal.transform(portfolio["current_pd"])
 print(f"PIT calibration: scalar = {pit_cal._scalar:.3f}x "
-      f"| Mean PIT PD: {portfolio['pit_pd'].mean():.4f}")
+        f"| Mean PIT PD: {portfolio['pit_pd'].mean():.4f}")
 
 # ── 3. IFRS 9 staging ─────────────────────────────────────────────────────
 from modelrisk.credit.ifrs9 import StagingClassifier
