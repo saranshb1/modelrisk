@@ -214,7 +214,6 @@ class PITtoTTCBridge:
             logit_pit = np.log(pit_c / (1 - pit_c))
             logit_ttc = np.log(ttc_c / (1 - ttc_c))
             self._logit_offset = float(np.mean(logit_ttc - logit_pit))
-            
         return self
 
     def convert(self, pit_pds: pd.Series | np.ndarray) -> np.ndarray:
