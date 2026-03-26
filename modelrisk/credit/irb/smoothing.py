@@ -209,12 +209,12 @@ class PITtoTTCBridge:
         if self.method == "scalar":
             self._scalar = float(np.mean(ttc) / max(np.mean(pit), 1e-9))
         else:
-            def logit(p: np.ndarray) -> np.ndarray:
-                p = np.clip(p, 1e-9, 1 - 1e-9)
-                return np.log(p / (1 - p))
-
-        self._logit_offset = float(np.mean(logit(ttc) - logit(pit)))
-
+            pit_c = np.clip(pit, 1e-9, 1 - 1e-9)
+            ttc_c = np.clip(ttc, 1e-9, 1 - 1e-9)
+            logit_pit = np.log(pit_c / (1 - pit_c))
+            logit_ttc = np.log(ttc_c / (1 - ttc_c))
+            self._logit_offset = float(np.mean(logit_ttc - logit_pit))
+            
         return self
 
     def convert(self, pit_pds: pd.Series | np.ndarray) -> np.ndarray:

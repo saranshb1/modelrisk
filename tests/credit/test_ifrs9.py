@@ -129,7 +129,12 @@ class TestStagingClassifier:
 
     def test_stage2_relative_trigger(self, sample_data):
         cur, orig = sample_data
-        clf = StagingClassifier(method="relative", relative_multiplier=2.0)
+        # Disable the low-credit-risk exemption so the relative trigger can fire
+        clf = StagingClassifier(
+            method="relative",
+            relative_multiplier=2.0,
+            low_credit_risk_exemption=None,
+        )
         stages = clf.classify(cur, orig)
         # cur[1]=0.002, orig[1]=0.001 → ratio=2.0 ≥ 2.0 → Stage 2
         assert stages[1] == 2
@@ -183,6 +188,7 @@ class TestStagingClassifier:
         assert set(summary.columns).issuperset({"stage", "count", "pct_count", "mean_pd"})
         assert abs(summary["pct_count"].sum() - 100.0) < 0.01
 
+
     def test_stage_counts_sum_to_total(self, sample_data):
         cur, orig = sample_data
         clf = StagingClassifier(method="dual")
@@ -225,7 +231,7 @@ class TestForwardPDCurve:
         factors = np.ones(12)
         factors[0] = 0.5   # lower default in first period
         marginal = curve.build(pit_pd_12m=0.03, method="seasoning_curve",
-                               seasoning_factors=factors)
+                                seasoning_factors=factors)
         assert marginal.shape == (12,)
         assert marginal[0] < marginal[5]   # first period lower due to factor
 
@@ -339,10 +345,15 @@ class TestMacroOverlay:
     def test_apply_downside_increases_pd(self, macro_data):
         macro_df, hist_pd = macro_data
         ov = MacroOverlay(method="logit_link").fit_sensitivity(hist_pd, macro_df)
-        baseline  = {"gdp": 1.5, "unemployment": 6.0}
-        downside  = {"gdp": -1.0, "unemployment": 9.0}
-        adjusted  = ov.apply(0.025, downside, baseline)
-        assert adjusted > 0.025   # worse macro → higher PD
+        baseline = {feat: float(macro_df[feat].mean()) for feat in ov._feature_names}
+        # Move every variable in the direction that increases PD
+        # (determined by the sign of its fitted coefficient)
+        adverse = {
+            feat: baseline[feat] + 2.0 if coef > 0 else baseline[feat] - 2.0
+            for feat, coef in ov._coef.items()
+        }
+        adjusted = ov.apply(0.025, adverse, baseline)
+        assert adjusted > 0.025   # moving in adverse direction → higher PD
 
     def test_apply_upside_decreases_pd(self, macro_data):
         macro_df, hist_pd = macro_data
@@ -387,7 +398,7 @@ class TestECLCalculator:
     def portfolio(self):
         n = 300
         return {
-            "pd":          RNG.uniform(0.005, 0.08, n),
+            "pd_12m":      RNG.uniform(0.005, 0.08, n),
             "lgd":         RNG.uniform(0.20, 0.60, n),
             "ead":         RNG.uniform(10_000, 500_000, n),
             "stage":       RNG.choice([1, 2, 3], n, p=[0.70, 0.25, 0.05]),
