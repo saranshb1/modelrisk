@@ -403,11 +403,11 @@ class TestECLCalculator:
     def portfolio(self):
         n = 300
         return {
-            "pd_12m":      RNG.uniform(0.005, 0.08, n),
-            "lgd":         RNG.uniform(0.20, 0.60, n),
-            "ead":         RNG.uniform(10_000, 500_000, n),
-            "stage":       RNG.choice([1, 2, 3], n, p=[0.70, 0.25, 0.05]),
-            "lifetime_pd": RNG.uniform(0.05, 0.40, n),
+            "pd_array":          RNG.uniform(0.005, 0.08, n),
+            "lgd_array":         RNG.uniform(0.20, 0.60, n),
+            "ead_array":         RNG.uniform(10_000, 500_000, n),
+            "stage_array":       RNG.choice([1, 2, 3], n, p=[0.70, 0.25, 0.05]),
+            "lifetime_pd_array": RNG.uniform(0.05, 0.40, n),
         }
 
     def test_compute_portfolio_shape(self, portfolio):
