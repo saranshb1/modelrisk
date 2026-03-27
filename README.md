@@ -8,6 +8,44 @@
 
 **modelrisk** is a Python library for credit, market, and operational risk modelling with a built-in model evaluation and explainability suite.
 
+
+---
+
+## Package Structure
+
+graph TD
+
+A[modelrisk]
+
+A --> B[credit]
+A --> C[market]
+A --> D[risk engine]
+A --> E[evaluation]
+A --> F[utils]
+
+B --> B1[IFRS9 Models]
+B --> B2[Scorecards]
+B --> B3[IRB]
+
+C --> C1[VaR / CVaR]
+C --> C2[Volatility]
+C --> C3[Simulation]
+
+D --> D1[LDA]
+D --> D2[Scenarios]
+D --> D3[EVT]
+
+E --> E1[Classification Metrics]
+E --> E2[Regression Metrics]
+E --> E3[Calibration]
+E --> E4[Explainability]
+
+F --> F1[Distributions]
+F --> F2[Simulation]
+F --> F3[Plotting]
+
+---
+
 ---
 
 ## Architecture
