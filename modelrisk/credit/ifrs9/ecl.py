@@ -53,6 +53,12 @@ class ECLCalculator:
         stage_array: pd.Series | np.ndarray,
         lifetime_pd_array: pd.Series | np.ndarray | None = None,
         remaining_periods_array: pd.Series | np.ndarray | None = None,
+        *,
+        pd_12m: pd.Series | np.ndarray | None = None,
+        lgd: pd.Series | np.ndarray | None = None,
+        ead: pd.Series | np.ndarray | None = None,
+        stage: pd.Series | np.ndarray | None = None,
+        lifetime_pd: pd.Series | np.ndarray | None = None,
     ) -> pd.DataFrame:
         """Compute exposure-level ECL for a portfolio.
 
